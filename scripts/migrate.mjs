@@ -5,12 +5,16 @@ import { readFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 import pg from "pg";
+import { loadEnvLocal } from "./load-env.mjs";
 
 const here = dirname(fileURLToPath(import.meta.url));
+loadEnvLocal();
+
 const connectionString = process.env.DATABASE_URL;
 
 if (!connectionString) {
-    console.error("DATABASE_URL is not set.");
+    console.error("DATABASE_URL is not set, and no .env.local was found.");
+    console.error("Run `npm run setup` first, or export DATABASE_URL yourself.");
     process.exit(1);
 }
 

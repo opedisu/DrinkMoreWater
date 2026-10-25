@@ -69,25 +69,41 @@ the scheduler is native, and Postgres stays on the private network.
    Give that service the same `CRON_SECRET` and `APP_URL` variables.
 6. Set `APP_URL` to the public domain Railway gives you, and redeploy.
 
-### Option B — Vercel + Neon (free)
+### Option B — Vercel for the app, with Postgres elsewhere
 
-1. Create a Neon database and copy the **pooled** connection string (the one with
-   `-pooler` in the host). The unpooled one will exhaust connections under serverless.
+1. **Get a Postgres connection string.** On Neon, use the **pooled** one (`-pooler` in the
+   host); the unpooled one exhausts connections under serverless. On Railway, use
+   `DATABASE_PUBLIC_URL`, not `DATABASE_URL` — the internal `*.railway.internal` host is
+   unreachable from Vercel.
 2. Import the repo into Vercel.
 3. From a local checkout: `vercel link`, then `npm run setup -- --vercel`.
 4. `npm run db:migrate`.
-5. **Set up the scheduler.** The included GitHub Actions workflow runs every 15 minutes.
-   Add `APP_URL` and `CRON_SECRET` as repository secrets under
-   **Settings → Secrets and variables → Actions**.
+5. **Redeploy.** `NEXT_PUBLIC_VAPID_PUBLIC_KEY` is inlined at build time, so a deployment
+   built before that variable existed cannot subscribe anyone to push — silently. Any
+   deployment made after the variables are set is fine; an existing one must be rebuilt
+   (`vercel --prod`, or Redeploy in the dashboard with the build cache off).
+6. **Set up the scheduler**, either:
+   - a cron service on Railway (or any always-on box) running
+     `curl -fsS -H "Authorization: Bearer $CRON_SECRET" "$APP_URL/api/cron/reminders"`
+     every 15 minutes — recommended; or
+   - the included GitHub Actions workflow, with `APP_URL` and `CRON_SECRET` added as
+     repository secrets under **Settings → Secrets and variables → Actions**.
 
-   ⚠️ **Read this one.** GitHub disables scheduled workflows in a public repository after
-   **60 days without repository activity**. If you stop committing, reminders stop, and
-   nothing tells you. Either commit something every couple of months, or use an external
-   scheduler instead (below). This is the single most likely way this app fails quietly.
+   ⚠️ **If you use GitHub Actions, read this.** GitHub disables scheduled workflows in a
+   public repository after **60 days without repository activity**. If you stop
+   committing, reminders stop, and nothing tells you. This is the single most likely way
+   this app fails quietly. The health check below is what catches it either way.
 
 `vercel.json` deliberately declares **no** cron: running two schedulers against the same
 endpoint was itself a duplicate-push risk, and Vercel's Hobby plan restricts cron
 frequency anyway.
+
+### Sign-in email
+
+Without `RESEND_API_KEY`, sign-in links are written to the server log instead of being
+emailed. That is fine for local development and useless for a real user: nobody but you
+can get in. Create a free Resend account, add the API key, and redeploy before anyone
+else tries to sign up.
 
 ### Watch the scheduler — do this on either path
 

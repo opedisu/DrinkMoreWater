@@ -1631,3 +1631,43 @@ input[type="time"]::-webkit-date-and-time-value {
     text-align: left;
     margin: 0;
 }
+
+/* Two time fields side by side only when there is room. iOS gives a time
+   input a wide intrinsic minimum and will overlap its neighbour rather
+   than shrink, so on a phone they stack instead. */
+@media (max-width: 460px) {
+    .field-row {
+        grid-template-columns: 1fr;
+        gap: 14px;
+    }
+}
+
+/* A tap has to be answered before the page arrives, or it reads as a dead
+   control and people tap again. */
+.nav-body {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 3px;
+    transition: color var(--dur-fast) var(--ease), opacity var(--dur-fast) var(--ease);
+}
+
+.nav-body.pending {
+    color: var(--accent);
+}
+
+.nav-body.pending .nav-icon {
+    animation: nav-pulse 900ms var(--ease) infinite;
+}
+
+@keyframes nav-pulse {
+    50% {
+        opacity: 0.45;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .nav-body.pending .nav-icon {
+        animation: none;
+    }
+}

@@ -108,19 +108,21 @@ export default function InstallGuide({ compact = false }: { compact?: boolean })
                         <span className="install-step-icon" aria-hidden="true">
                             <Export size={17} weight="bold" />
                         </span>
-                        Tap the Share button in Safari&apos;s toolbar
+                        <span>Tap the Share button in Safari&apos;s toolbar</span>
                     </li>
                     <li>
                         <span className="install-step-icon" aria-hidden="true">
                             <PlusSquare size={17} weight="bold" />
                         </span>
-                        Choose <strong>Add to Home Screen</strong>
+                        <span>
+                            Choose <strong>Add to Home Screen</strong>
+                        </span>
                     </li>
                     <li>
                         <span className="install-step-icon" aria-hidden="true">
                             <CheckCircle size={17} weight="bold" />
                         </span>
-                        Open DrinkMoreWater from your home screen
+                        <span>Open DrinkMoreWater from your home screen</span>
                     </li>
                 </ol>
             )}

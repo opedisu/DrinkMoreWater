@@ -1407,3 +1407,170 @@ select {
 .setting-intro {
     margin-bottom: 4px;
 }
+
+/* ---------- the page as a glass ---------- */
+
+.page-water {
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    overflow: hidden;
+    pointer-events: none;
+}
+
+/* Sits just below the viewport and is pulled up as the page scrolls. The
+   fallback level is a part-full page, which still reads as deliberate. */
+.page-water-body {
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 100%;
+    height: 100%;
+    transform: translateY(-20%);
+    will-change: transform;
+}
+
+@supports (animation-timeline: scroll()) {
+    .page-water-body {
+        animation: water-rise linear both;
+        animation-timeline: scroll(root block);
+    }
+}
+
+@keyframes water-rise {
+    from {
+        transform: translateY(-16%);
+    }
+    to {
+        transform: translateY(-100%);
+    }
+}
+
+.page-water-surface {
+    position: absolute;
+    top: -47px;
+    left: 0;
+    display: block;
+}
+
+/* Deep, not bright: the surface passes over real text, and the copy has to
+   stay readable underwater.
+
+   Exactly one filled path, at exactly the colour the depth layer starts on.
+   Two translucent fills stacked to about 0.56 where they overlapped, while
+   the water below stayed 0.34, which drew a hard step straight across the
+   page at the boundary. The second wave is a line now, not a mass. */
+.page-water-wave.front {
+    fill: rgba(13, 104, 160, 0.34);
+    animation: page-drift 9s linear infinite reverse;
+}
+
+.page-water-wave.back {
+    fill: none;
+    stroke: rgba(120, 200, 235, 0.16);
+    stroke-width: 2;
+    animation: page-drift 13s linear infinite;
+}
+
+.page-water-crest {
+    stroke: rgba(160, 225, 250, 0.45);
+    stroke-width: 2;
+    animation: page-drift 9s linear infinite reverse;
+}
+
+/* Each path spans 2400 units against a 1200 viewBox, so -50% is 1200: two
+   whole 600-unit periods, which lands on an identical crest and still has
+   path left to cover the full width. A path only one viewBox wide ran out
+   partway across as soon as it moved. */
+@keyframes page-drift {
+    to {
+        transform: translateX(-50%);
+    }
+}
+
+.page-water-depth {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(180deg, rgba(13, 104, 160, 0.34), rgba(9, 76, 120, 0.42));
+}
+
+/* Content floats above the water rather than being tinted by it. */
+.lp {
+    position: relative;
+    z-index: 1;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .page-water-body {
+        animation: none !important;
+        transform: translateY(-55%) !important;
+    }
+
+    .page-water-wave,
+    .page-water-crest {
+        animation: none !important;
+    }
+}
+
+/* ---------- landing hero stage ---------- */
+
+.lp-stage {
+    display: grid;
+    gap: 18px;
+    justify-items: start;
+}
+
+.lp-readout {
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.lp-total {
+    font-family: var(--font-mono), ui-monospace, monospace;
+    font-variant-numeric: tabular-nums;
+    font-size: clamp(40px, 13vw, 56px);
+    font-weight: 600;
+    letter-spacing: -0.06em;
+    line-height: 1;
+}
+
+.lp-goal {
+    color: var(--text-muted);
+    font-size: 14px;
+}
+
+/* The real log controls, shown rather than described. */
+.lp-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.lp-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    padding: 9px 13px;
+    border-radius: var(--radius-pill);
+    background: rgba(255, 255, 255, 0.055);
+    border: 1px solid var(--border);
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-muted);
+    font-variant-numeric: tabular-nums;
+}
+
+.lp-chip svg {
+    color: var(--accent);
+}
+
+/* Stacked on a phone, so the hero has no dead gap to fall into. */
+@media (max-width: 759px) {
+    .lp-hero {
+        min-height: 0;
+        gap: 26px;
+        padding-top: 8px;
+    }
+}

@@ -1,14 +1,17 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { BellRinging, Fire, Sparkle, UsersThree } from "@phosphor-icons/react/ssr";
-import Vessel from "@/components/Vessel";
+import LandingHero from "@/components/LandingHero";
+import PageWater from "@/components/PageWater";
 import { currentUserId } from "@/lib/session";
 
 export default async function LandingPage() {
     if (await currentUserId()) redirect("/app");
 
     return (
-        <main className="lp">
+        <>
+            <PageWater />
+            <main className="lp">
             <section className="lp-hero">
                 <div className="lp-copy">
                     <h1>
@@ -25,9 +28,9 @@ export default async function LandingPage() {
                     </Link>
                 </div>
 
-                {/* The real component, not a mock of one. Illustrative values. */}
-                <div className="lp-visual" aria-hidden="true">
-                    <Vessel totalMl={2100} goalMl={3000} />
+                {/* The real components, filling on arrival, not a mock. */}
+                <div className="lp-visual">
+                    <LandingHero />
                 </div>
             </section>
 
@@ -63,6 +66,7 @@ export default async function LandingPage() {
             <p className="lp-note">
                 Not medical advice. If a doctor has given you a fluid target, follow theirs.
             </p>
-        </main>
+            </main>
+        </>
     );
 }

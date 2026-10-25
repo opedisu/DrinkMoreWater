@@ -1,0 +1,31 @@
+{
+    "name": "drinkmorewater",
+    "version": "1.0.0",
+    "private": true,
+    "description": "A hydration tracker with real push reminders, streaks and rewards.",
+    "scripts": {
+        "dev": "next dev",
+        "build": "next build",
+        "start": "next start",
+        "lint": "eslint .",
+        "db:migrate": "node scripts/migrate.mjs",
+        "vapid": "node scripts/generate-vapid.mjs"
+    },
+    "dependencies": {
+        "next": "16.4.3",
+        "pg": "8.13.1",
+        "react": "19.1.0",
+        "react-dom": "19.1.0",
+        "web-push": "3.6.7"
+    },
+    "devDependencies": {
+        "@types/node": "22.10.2",
+        "@types/pg": "8.11.10",
+        "@types/react": "19.1.0",
+        "@types/react-dom": "19.1.0",
+        "@types/web-push": "^3.6.4",
+        "eslint": "9.17.0",
+        "eslint-config-next": "16.4.3",
+        "typescript": "5.7.2"
+    }
+}

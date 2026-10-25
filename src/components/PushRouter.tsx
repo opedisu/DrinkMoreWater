@@ -53,6 +53,12 @@ export default function PushRouter() {
         };
         document.addEventListener("visibilitychange", onVisible);
 
+        // iOS restores a backgrounded PWA from the back/forward cache, and
+        // visibilitychange does not reliably fire on that path. pageshow does.
+        const onShow = () => void consumePendingNav();
+        window.addEventListener("pageshow", onShow);
+        window.addEventListener("focus", onShow);
+
         const onMessage = (event: MessageEvent) => {
             if (event.data?.type === "navigate" && isSafePath(event.data.url)) {
                 router.push(event.data.url);
@@ -63,6 +69,8 @@ export default function PushRouter() {
 
         return () => {
             document.removeEventListener("visibilitychange", onVisible);
+            window.removeEventListener("pageshow", onShow);
+            window.removeEventListener("focus", onShow);
             sw?.removeEventListener("message", onMessage);
         };
     }, [consumePendingNav, router]);

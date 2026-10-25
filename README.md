@@ -48,13 +48,16 @@ the scheduler is native, and Postgres stays on the private network.
 
    ```bash
    npm install
-   railway link                      # pick the app service
+   railway link                      # choose the APP service, not Postgres
    npm run setup -- --railway
    ```
 
    This mints `AUTH_SECRET`, `CRON_SECRET` and the VAPID key pair locally, writes them to
-   a `0600` `.env.local`, and pushes them into Railway. Nothing is printed to your
-   terminal, so no secret lands in your scrollback or shell history.
+   a `0600` `.env.local`, and pushes them into Railway. It prints the project, environment
+   and service it is about to write to and waits for confirmation, so secrets cannot land
+   on the wrong service. Values go in over stdin rather than as command arguments, which
+   keeps them out of your shell history and out of the process list; only the last
+   variable triggers a redeploy.
 4. **Run the migration:** `npm run db:migrate` (with `DATABASE_URL` set).
 5. **Add the scheduler.** New service in the same project → set it to run on a cron
    schedule of `*/15 * * * *` with:

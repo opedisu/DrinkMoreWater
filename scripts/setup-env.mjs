@@ -146,31 +146,118 @@ for (const [name, state] of report) console.log(`  ${state === "generated" ? "+"
 console.log(`\nWritten to ${ENV_FILE} with 0600 permissions. It is gitignored.`);
 console.log("Values are not printed here on purpose — read the file if you need one.");
 
-function pushTo(provider) {
-    const keys = ORDER.filter((key) => env[key]);
-    console.log(`\nPushing ${keys.length} variables to ${provider}...`);
+function run(command, argv, options = {}) {
+    return execFileSync(command, argv, { stdio: ["pipe", "pipe", "pipe"], ...options }).toString();
+}
 
-    for (const key of keys) {
+/** Older Railway CLIs lack `variable set --stdin`; detect once rather than guess. */
+function railwaySupportsStdin() {
+    try {
+        return run("railway", ["variable", "set", "--help"]).includes("--stdin");
+    } catch {
+        return false;
+    }
+}
+
+/** Shows what is about to be written to, so secrets cannot go to the wrong service. */
+function railwayTarget() {
+    try {
+        const status = JSON.parse(run("railway", ["status", "--json"]));
+        return {
+            project: status.name ?? "unknown project",
+            environment: status.environment?.name ?? status.environmentName ?? "unknown environment",
+            service: status.service?.name ?? status.services?.edges?.[0]?.node?.name ?? null
+        };
+    } catch {
+        return null;
+    }
+}
+
+async function pushToRailway(keys) {
+    const target = railwayTarget();
+    if (!target) {
+        console.error("\nCould not read the linked Railway project. Run `railway link` first.");
+        return;
+    }
+
+    console.log(`\nTarget: ${target.project} / ${target.environment}${target.service ? ` / ${target.service}` : ""}`);
+    if (!target.service) {
+        console.log("No service is linked. Re-run `railway link` and choose the app service,");
+        console.log("not the Postgres one, or the variables will land in the wrong place.");
+    }
+
+    const answer = await ask(`Write ${keys.length} variables there? [y/N] `);
+    if (answer.toLowerCase() !== "y") {
+        console.log("Nothing was written.");
+        return;
+    }
+
+    const useStdin = railwaySupportsStdin();
+    console.log();
+
+    keys.forEach((key, index) => {
+        // Only the final variable triggers a deploy, so one redeploy happens
+        // rather than one per variable.
+        const isLast = index === keys.length - 1;
         try {
-            if (provider === "railway") {
-                // --set keeps the value out of argv-visible shell history when
-                // run directly, and Railway stores it encrypted.
-                execFileSync("railway", ["variables", "--set", `${key}=${env[key]}`], { stdio: ["ignore", "ignore", "pipe"] });
+            if (useStdin) {
+                // --stdin keeps the value out of the argument list, where any
+                // other process on the machine could read it from `ps`.
+                const argv = ["variable", "set", key, "--stdin"];
+                if (!isLast) argv.push("--skip-deploys");
+                run("railway", argv, { input: env[key] });
             } else {
-                for (const target of ["production", "preview", "development"]) {
-                    execFileSync("vercel", ["env", "rm", key, target, "--yes"], { stdio: "ignore" });
-                    execFileSync("vercel", ["env", "add", key, target], { input: `${env[key]}\n`, stdio: ["pipe", "ignore", "pipe"] });
-                }
+                const argv = ["variables", "--set", `${key}=${env[key]}`];
+                if (!isLast) argv.push("--skip-deploys");
+                run("railway", argv);
             }
             console.log(`  ✓ ${key}${PUBLIC_KEYS.has(key) ? "" : " (secret)"}`);
         } catch (error) {
-            console.error(`  ✗ ${key} — ${error.stderr?.toString().trim().split("\n")[0] ?? error.message}`);
+            console.error(`  ✗ ${key} — ${firstLine(error)}`);
+        }
+    });
+
+    if (!useStdin) {
+        console.log("\nNote: this Railway CLI is too old for `variable set --stdin`, so values");
+        console.log("were passed as arguments. Upgrade it to keep secrets out of the process list.");
+    }
+}
+
+async function pushToVercel(keys) {
+    const answer = await ask(`\nWrite ${keys.length} variables to the linked Vercel project? [y/N] `);
+    if (answer.toLowerCase() !== "y") {
+        console.log("Nothing was written.");
+        return;
+    }
+    console.log();
+
+    for (const key of keys) {
+        try {
+            const argv = [
+                "env", "add", key,
+                "--environment", "production,preview,development",
+                "--force",
+                PUBLIC_KEYS.has(key) ? "--no-sensitive" : "--sensitive"
+            ];
+            // The value goes in on stdin rather than --value, for the same
+            // reason as Railway: arguments are visible to other processes.
+            run("vercel", argv, { input: `${env[key]}\n` });
+            console.log(`  ✓ ${key}${PUBLIC_KEYS.has(key) ? "" : " (secret)"}`);
+        } catch (error) {
+            console.error(`  ✗ ${key} — ${firstLine(error)}`);
         }
     }
 }
 
-if (args.has("--railway")) pushTo("railway");
-if (args.has("--vercel")) pushTo("vercel");
+function firstLine(error) {
+    const text = error.stderr?.toString().trim() || error.stdout?.toString().trim() || error.message;
+    return text.split("\n").find((line) => line.trim().length > 0) ?? "failed";
+}
+
+const pushable = ORDER.filter((key) => env[key]);
+
+if (args.has("--railway")) await pushToRailway(pushable);
+if (args.has("--vercel")) await pushToVercel(pushable);
 
 if (!args.has("--railway") && !args.has("--vercel")) {
     console.log("\nNothing was pushed to a provider. Re-run with --railway or --vercel to do that.");

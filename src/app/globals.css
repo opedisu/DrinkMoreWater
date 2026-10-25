@@ -1219,3 +1219,153 @@ select {
     font-weight: 600;
     letter-spacing: -0.05em;
 }
+
+/* ---------- install guide ---------- */
+
+/* A strip, not a card. It sits above the day's number, so every pixel it
+   takes is a pixel of the thing people opened the app to see. Flat tint
+   rather than a gradient, so it does not compete with the hero's bloom. */
+.install-card {
+    position: relative;
+    padding: 13px 15px;
+    border-radius: var(--radius-sm);
+    background: var(--accent-soft);
+    border: 1px solid rgba(56, 189, 248, 0.22);
+    margin-bottom: 14px;
+}
+
+.install-card.compact {
+    background: none;
+    border: none;
+    padding: 0;
+    margin-bottom: 0;
+}
+
+.install-line {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding-right: 28px;
+    font-size: 13.5px;
+    line-height: 1.45;
+    color: var(--text-muted);
+}
+
+/* Optical alignment: a 17px glyph sits high against a 13.5px line. */
+.install-line > svg {
+    flex: 0 0 auto;
+    margin-top: 1px;
+    color: var(--accent);
+}
+
+.install-line strong {
+    color: var(--text);
+    font-weight: 600;
+}
+
+.install-action {
+    margin-top: 12px;
+}
+
+/* Numbered because the order matters and people lose their place inside
+   Safari's share sheet. */
+.install-steps {
+    list-style: none;
+    counter-reset: step;
+    margin: 13px 0 0;
+    padding: 0;
+    display: grid;
+    gap: 10px;
+}
+
+.install-steps li {
+    counter-increment: step;
+    display: grid;
+    grid-template-columns: 18px 18px 1fr;
+    align-items: center;
+    gap: 10px;
+    font-size: 13.5px;
+    line-height: 1.4;
+}
+
+.install-steps li::before {
+    content: counter(step);
+    font-family: var(--font-mono), ui-monospace, monospace;
+    font-size: 10.5px;
+    font-weight: 600;
+    width: 18px;
+    height: 18px;
+    display: grid;
+    place-items: center;
+    border-radius: var(--radius-pill);
+    background: rgba(255, 255, 255, 0.08);
+    color: var(--text-muted);
+}
+
+/* Fixed-width column so the glyphs form a straight edge regardless of
+   each icon's own width. */
+.install-step-icon {
+    display: grid;
+    place-items: center;
+    width: 18px;
+    color: var(--accent);
+}
+
+.install-manual {
+    margin-top: 10px;
+    line-height: 1.5;
+}
+
+.install-done {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--success);
+}
+
+/* Aligned to the first text line rather than floating in the corner. */
+.install-dismiss {
+    position: absolute;
+    top: 6px;
+    right: 6px;
+    display: grid;
+    place-items: center;
+    width: 32px;
+    height: 32px;
+    border-radius: var(--radius-pill);
+    color: var(--text-muted);
+    transition: color var(--dur) var(--ease), background var(--dur) var(--ease);
+}
+
+.install-dismiss:active {
+    background: rgba(255, 255, 255, 0.08);
+    color: var(--text);
+}
+
+/* Everything that interrupts before the day's number shares one rhythm:
+   tight between notices, generous before the content they sit above. */
+.notices {
+    display: grid;
+    gap: 10px;
+    margin-bottom: 26px;
+}
+
+.notices:empty {
+    display: none;
+    margin-bottom: 0;
+}
+
+.notices > .install-card {
+    margin-bottom: 0;
+}
+
+/* Optical alignment against the banner's first line of text. */
+.banner > svg {
+    flex: 0 0 auto;
+    margin-top: 2px;
+    color: var(--accent);
+}
+
+.banner.warn > svg {
+    color: var(--warning);
+}

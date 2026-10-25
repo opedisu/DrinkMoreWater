@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Warning } from "@phosphor-icons/react";
+import InstallGuide from "@/components/InstallGuide";
 import { useRouter } from "next/navigation";
 import Nav from "@/components/Nav";
 import { Toast, useToast } from "@/components/Toast";
@@ -113,6 +114,9 @@ export default function SettingsScreen({ initial, vapidKey }: { initial: Snapsho
 
                 <section className="card stack">
                     <div className="card-title">Reminders</div>
+                    <div style={{ marginBottom: 16 }}>
+                        <InstallGuide compact />
+                    </div>
 
                     {push && push.state !== "enabled" && push.state !== "prompt" && (
                         <div className="banner warn">

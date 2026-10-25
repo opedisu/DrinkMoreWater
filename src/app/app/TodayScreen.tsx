@@ -15,6 +15,7 @@ import {
     type Icon
 } from "@phosphor-icons/react";
 import Nav from "@/components/Nav";
+import InstallGuide from "@/components/InstallGuide";
 import Vessel from "@/components/Vessel";
 import Confetti from "@/components/Confetti";
 import { Toast, useToast } from "@/components/Toast";
@@ -184,9 +185,13 @@ export default function TodayScreen({ initial, vapidKey }: { initial: Snapshot; 
                     </div>
                 </header>
 
-                {push && (push.state === "prompt" || push.state === "needs-install" || push.state === "denied") && (
-                    <div className={`banner${push.state === "prompt" ? "" : " warn"}`} style={{ marginBottom: 14 }}>
-                        <Bell size={18} weight="fill" style={{ flex: "0 0 auto", marginTop: 1 }} />
+                <div className="notices">
+                    {/* Installing comes first on iOS; the guide hides itself once done. */}
+                    <InstallGuide />
+
+                {push && (push.state === "prompt" || push.state === "denied") && (
+                    <div className={`banner${push.state === "prompt" ? "" : " warn"}`}>
+                        <Bell size={18} weight="fill" />
                         <div>
                             {push.detail}
                             {push.state === "prompt" && (
@@ -201,11 +206,13 @@ export default function TodayScreen({ initial, vapidKey }: { initial: Snapshot; 
                 )}
 
                 {reminderHealth && (
-                    <div className="banner warn" style={{ marginBottom: 14 }}>
-                        <BellSlash size={18} weight="fill" style={{ flex: "0 0 auto", marginTop: 1 }} />
+                    <div className="banner warn">
+                        <BellSlash size={18} weight="fill" />
                         <div>{reminderHealth}</div>
                     </div>
                 )}
+
+                </div>
 
                 <section className="today-hero reveal">
                     <div className="today-readout">

@@ -41,15 +41,19 @@ export function useTilt(ref: RefObject<SVGSVGElement | null>, limit = 7) {
         window.addEventListener("deviceorientation", handler);
     }, [limit, ref]);
 
-    /** Call from a user gesture on iOS. A no-op everywhere else. */
-    const request = useCallback(async () => {
-        if (!tiltNeedsPermission()) return;
+    /** Call from a user gesture on iOS. Resolves to whether tilt is now on. */
+    const request = useCallback(async (): Promise<boolean> => {
+        if (!tiltNeedsPermission()) return false;
         try {
             const state = await (DeviceOrientationEvent as Gated).requestPermission?.();
-            if (state === "granted") attach();
+            if (state === "granted") {
+                attach();
+                return true;
+            }
         } catch {
             // Declined or unavailable. The vessel simply stays level.
         }
+        return false;
     }, [attach]);
 
     useEffect(() => {

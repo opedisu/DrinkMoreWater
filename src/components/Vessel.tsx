@@ -32,17 +32,28 @@ export default function Vessel({ totalMl, goalMl }: { totalMl: number; goalMl: n
     const svgRef = useRef<SVGSVGElement>(null);
     const requestTilt = useTilt(svgRef);
 
+    async function enableTilt() {
+        await requestTilt();
+        // Hide the prompt either way: asking twice does not help, and iOS
+        // will not re-prompt once the choice is made.
+        setAsked(true);
+    }
+
     // The server cannot know whether this browser gates the sensor, and
     // reading it during render produced a hydration mismatch. The server
     // snapshot is false, so the first client render agrees with the HTML.
     const askable = useSyncExternalStore(subscribeNever, tiltNeedsPermission, () => false);
+    const [asked, setAsked] = useState(false);
 
     useEffect(() => {
         if (totalMl > previousTotal.current) setSplash((n) => n + 1);
         previousTotal.current = totalMl;
     }, [totalMl]);
 
+    const showPrompt = askable && !asked;
+
     return (
+        <div className="vessel-holder">
         <svg
             ref={svgRef}
             className="vessel"
@@ -51,10 +62,10 @@ export default function Vessel({ totalMl, goalMl }: { totalMl: number; goalMl: n
             height={H}
             // iOS only hands over the sensor after a gesture, so a tap on the
             // water asks for it. Everywhere else the listener is already on.
-            onClick={askable ? () => void requestTilt() : undefined}
-            role={askable ? "button" : undefined}
-            aria-label={askable ? "Tilt the water with your phone" : undefined}
-            aria-hidden={askable ? undefined : true}
+            onClick={showPrompt ? () => void enableTilt() : undefined}
+            role={showPrompt ? "button" : undefined}
+            aria-label={showPrompt ? "Tilt the water with your phone" : undefined}
+            aria-hidden={showPrompt ? undefined : true}
         >
             <defs>
                 <clipPath id="vesselClip">
@@ -112,6 +123,15 @@ export default function Vessel({ totalMl, goalMl }: { totalMl: number; goalMl: n
                 />
             ))}
         </svg>
+
+            {/* iOS only hands over the sensor after a gesture, and an
+                invisible affordance is the same as none. */}
+            {showPrompt && (
+                <button className="tilt-prompt" onClick={() => void enableTilt()}>
+                    Tap to tilt the water
+                </button>
+            )}
+        </div>
     );
 }
 

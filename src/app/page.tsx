@@ -27,13 +27,7 @@ export default async function LandingPage() {
 
                 {/* The real component, not a mock of one. Illustrative values. */}
                 <div className="lp-visual" aria-hidden="true">
-                    <Vessel
-                        totalMl={2100}
-                        goalMl={3000}
-                        pacedTargetMl={1800}
-                        primaryLabel="2.1 L"
-                        goalLabel="3 L"
-                    />
+                    <Vessel totalMl={2100} goalMl={3000} />
                 </div>
             </section>
 

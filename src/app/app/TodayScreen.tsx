@@ -152,6 +152,16 @@ export default function TodayScreen({ initial, vapidKey }: { initial: Snapshot; 
     const reminderHealth =
         push?.state === "enabled" && user.remindersOn ? staleReminderWarning(user.lastRemindAt) : null;
     const remaining = Math.max(0, today.goalMl - today.totalMl);
+
+    // Pace moved out of the vessel when the readout did: the vessel is now
+    // purely the picture, and the words sit beside it.
+    const percent = today.goalMl > 0 ? Math.round(Math.min(1, today.totalMl / today.goalMl) * 100) : 0;
+    const goalMet = today.totalMl >= today.goalMl;
+    const behindPace = !goalMet && today.totalMl < today.pacedTargetMl - 100;
+    const paceClass = goalMet ? "done" : behindPace ? "behind" : "";
+    const paceText = goalMet
+        ? "Goal reached"
+        : `${percent}% \u00b7 ${behindPace ? "behind pace" : "on track"}`;
     const presets = PRESETS[unit];
 
     return (
@@ -197,19 +207,18 @@ export default function TodayScreen({ initial, vapidKey }: { initial: Snapshot; 
                     </div>
                 )}
 
-                <section className="stage reveal">
-                    <Vessel
-                        totalMl={today.totalMl}
-                        goalMl={today.goalMl}
-                        pacedTargetMl={today.pacedTargetMl}
-                        primaryLabel={formatAmount(today.totalMl, unit)}
-                        goalLabel={formatAmount(today.goalMl, unit)}
-                    />
-                    <p className="center muted" style={{ marginTop: 12 }}>
-                        {remaining > 0
-                            ? `${formatAmount(remaining, unit)} to go today`
-                            : "You are done for today. Nice work."}
-                    </p>
+                <section className="today-hero reveal">
+                    <div className="today-readout">
+                        <div className="today-total">{formatAmount(today.totalMl, unit)}</div>
+                        <div className="today-goal">of {formatAmount(today.goalMl, unit)}</div>
+                        <span className={`pill ${paceClass}`}>{paceText}</span>
+                        <p className="today-remaining">
+                            {remaining > 0
+                                ? `${formatAmount(remaining, unit)} to go today`
+                                : "You are done for today. Nice work."}
+                        </p>
+                    </div>
+                    <Vessel totalMl={today.totalMl} goalMl={today.goalMl} />
                 </section>
 
                 <section className="card reveal" style={{ animationDelay: "60ms" }}>

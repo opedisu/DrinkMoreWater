@@ -14,7 +14,7 @@
 
     /* The vessel's liquid. Lighter at the surface, denser at the base. */
     --liquid-top: #4cc5f7;
-    --liquid-bottom: #0b6ea8;
+    --liquid-bottom: #1187ca;
 
     /* Shape scale. The rule is: surfaces 22, controls 14, anything
        interactive-and-small is a full pill. Nothing else. */
@@ -299,18 +299,40 @@ select {
 
 /* ---------- vessel ---------- */
 
-.vessel-wrap {
+/* The number is the hero and the vessel is the picture beside it. A panel
+   floating over the liquid hid the surface line it existed to show. */
+.today-hero {
     display: grid;
-    justify-items: center;
-    padding: 4px 0 2px;
+    grid-template-columns: 1fr auto;
+    gap: 18px;
+    align-items: center;
+    margin-bottom: 30px;
 }
 
-/* The readout centres against this, which holds only the svg. When the status
-   pill was a sibling in the same grid the readout sat 19px low. */
-.vessel-stage {
-    position: relative;
-    display: grid;
-    place-items: center;
+.today-total {
+    font-family: var(--font-mono), ui-monospace, monospace;
+    font-variant-numeric: tabular-nums;
+    font-size: clamp(42px, 14vw, 60px);
+    font-weight: 600;
+    letter-spacing: -0.06em;
+    line-height: 0.94;
+}
+
+.today-goal {
+    color: var(--text-muted);
+    font-size: 14px;
+    margin-top: 7px;
+}
+
+.today-readout .pill {
+    margin-top: 15px;
+}
+
+.today-remaining {
+    color: var(--text-muted);
+    font-size: 13.5px;
+    margin-top: 13px;
+    line-height: 1.45;
 }
 
 .vessel {
@@ -327,10 +349,8 @@ select {
     transition: transform var(--dur-slow) var(--ease);
 }
 
-/* Translucent: the paths close to the bottom of the vessel, so at full opacity
-   they painted over the whole body and the fill gradient underneath was never
-   visible. Kept light enough that the gradient reads and dark enough that the
-   surface still has shape. */
+/* Translucent: the paths close to the bottom of the vessel, so at full
+   opacity they paint over the whole body and hide the fill gradient. */
 .wave {
     fill: var(--liquid-top);
 }
@@ -345,11 +365,11 @@ select {
     animation: drift 4.5s linear infinite reverse;
 }
 
-/* 190px is W in Vessel.tsx: exactly one wave period, so the loop has no seam.
-   If W changes there, change it here. */
+/* 104px is W in Vessel.tsx: exactly one wave period, so the loop has no
+   seam. If W changes there, change it here. */
 @keyframes drift {
     to {
-        transform: translateX(190px);
+        transform: translateX(104px);
     }
 }
 
@@ -357,40 +377,6 @@ select {
     stroke: rgba(160, 215, 245, 0.38);
     stroke-width: 2;
     stroke-linecap: round;
-}
-
-/* The liquid rises behind this text, so a full vessel would put white on pale
-   cyan. A soft radial scrim fixed the contrast but read as a dark smudge over
-   the liquid; a defined panel solves the same problem and looks deliberate,
-   like the readout window on a gauge. */
-.vessel-readout {
-    position: absolute;
-    text-align: center;
-    pointer-events: none;
-    padding: 9px 20px 11px;
-    border-radius: var(--radius-sm);
-    background: rgba(3, 16, 28, 0.6);
-    border: 1px solid rgba(255, 255, 255, 0.11);
-    box-shadow: var(--inset-hi);
-    backdrop-filter: blur(5px) saturate(120%);
-    -webkit-backdrop-filter: blur(5px) saturate(120%);
-}
-
-.vessel-value {
-    font-family: var(--font-mono), ui-monospace, monospace;
-    font-variant-numeric: tabular-nums;
-    font-size: 37px;
-    font-weight: 600;
-    letter-spacing: -0.05em;
-    line-height: 1;
-}
-
-/* Not --text-muted: this line sits over the liquid at high fill, where muted
-   grey on pale cyan fell to about 2:1. */
-.vessel-goal {
-    font-size: 13px;
-    color: rgba(238, 246, 252, 0.84);
-    margin-top: 4px;
 }
 
 /* ---------- pills ---------- */
@@ -415,10 +401,6 @@ select {
 .pill-num {
     font-family: var(--font-mono), ui-monospace, monospace;
     font-variant-numeric: tabular-nums;
-}
-
-.vessel-wrap > .pill {
-    margin-top: 12px;
 }
 
 .pill.done {
@@ -1131,4 +1113,45 @@ select {
     ::view-transition-new(root) {
         animation: none !important;
     }
+}
+
+/* ---------- progress refinements ---------- */
+
+/* Empty days were 3px dashes floating on nothing, which read as a broken
+   chart. A faint full-height track gives every day a place to stand. */
+.bar-col {
+    position: relative;
+}
+
+.bar-col::before {
+    content: "";
+    position: absolute;
+    inset: 0 0 20px;
+    border-radius: var(--radius-pill);
+    background: rgba(255, 255, 255, 0.042);
+}
+
+.bar {
+    position: relative;
+}
+
+/* Tiles without boxes. Three bordered rectangles in a row is the generic
+   dashboard move; hairlines between them say the same thing more quietly. */
+.grid-3 .stat {
+    background: none;
+    border: none;
+    border-radius: 0;
+    padding: 4px 6px;
+}
+
+.grid-3 .stat + .stat {
+    border-left: 1px solid var(--border);
+}
+
+/* A locked badge is an absence, so it should not be an object. Only earned
+   badges get a surface, which makes the wall of grey read as progress. */
+.badge.locked {
+    opacity: 0.5;
+    background: none;
+    border-color: transparent;
 }

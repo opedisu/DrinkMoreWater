@@ -1,6 +1,7 @@
 import { ViewTransition } from "react";
 import type { Metadata, Viewport } from "next";
 import { Azeret_Mono, Schibsted_Grotesk } from "next/font/google";
+import PushRouter from "@/components/PushRouter";
 import "./globals.css";
 
 // Schibsted Grotesk was drawn for news interfaces, so its figures stay legible
@@ -42,6 +43,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             {/* Tabs are siblings, so they crossfade rather than slide. The nav
                 carries its own stable name so it stays put across the change. */}
             <body>
+                <PushRouter />
                 <ViewTransition>{children}</ViewTransition>
             </body>
         </html>

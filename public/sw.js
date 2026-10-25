@@ -93,12 +93,40 @@ async function logFromNotification(amountMl) {
     }
 }
 
+/**
+ * Opens the app at the notification's destination.
+ *
+ * This used to look for a window already on /app and only focus it. From
+ * any other page the match failed, and an installed PWA answers
+ * openWindow by surfacing the window it already has, so tapping a reminder
+ * dropped you wherever you happened to be. It also never navigated even
+ * when it did match.
+ *
+ * Any window of ours will do now, and it is sent to the destination.
+ * client.navigate is not available everywhere, so where it is missing the
+ * page is asked to route itself.
+ */
 async function openApp(url) {
+    const target = new URL(url, self.location.origin).href;
     const clients = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
+
     for (const client of clients) {
-        if (client.url.includes("/app") && "focus" in client) {
-            return client.focus();
+        if (!("focus" in client)) continue;
+
+        if (client.url === target) return client.focus();
+
+        if ("navigate" in client) {
+            try {
+                const navigated = await client.navigate(target);
+                return (navigated || client).focus();
+            } catch {
+                // Falls through to asking the page to route itself.
+            }
         }
+
+        client.postMessage({ type: "navigate", url });
+        return client.focus();
     }
-    return self.clients.openWindow(url);
+
+    return self.clients.openWindow(target);
 }

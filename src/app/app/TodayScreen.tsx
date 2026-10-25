@@ -351,15 +351,23 @@ function greeting(minuteOfDay: number): string {
     return "Good evening,";
 }
 
-/** Flags reminders that should have fired by now but have not. */
+/**
+ * Warns only when reminders have genuinely stopped, in words the reader can
+ * act on.
+ *
+ * It used to fire the moment reminders were switched on, because none had
+ * been sent yet, which is the normal state for everyone on their first day.
+ * It also told them to check the scheduler, which is an instruction for
+ * whoever runs the server. Whether the sweep is alive belongs in
+ * /api/health, where it already is.
+ */
 function staleReminderWarning(lastRemindAt: string | null): string | null {
-    if (!lastRemindAt) {
-        return "Reminders are switched on, but none has been sent yet. If nothing arrives within a couple of hours, check that the scheduler is running.";
-    }
+    // Never nudged yet is not a fault, it is a new account.
+    if (!lastRemindAt) return null;
 
     const hours = (Date.now() - new Date(lastRemindAt).getTime()) / 3_600_000;
-    if (hours < 24) return null;
+    if (hours < 48) return null;
 
     const days = Math.floor(hours / 24);
-    return `No reminder has gone out for ${days === 1 ? "a day" : `${days} days`}. The scheduler may have stopped, so it is worth checking.`;
+    return `No reminder has arrived for ${days} days. Check that notifications are still allowed for this app.`;
 }

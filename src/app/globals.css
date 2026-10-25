@@ -1618,11 +1618,18 @@ select {
     width: 100%;
 }
 
-/* iOS centres the value; everything else in the app is left aligned. Only
-   the alignment is forced: appearance is left alone, because the overlap
-   was a sizing problem and suppressing the native control risks taking the
-   picker with it. */
+/* The native control carries its own intrinsic metrics, which is why
+   min-width:0 and width:100% were not enough: first it overlapped its
+   neighbour, then it overshot the card. Dropping the native appearance
+   makes it size like every other input here. The field is still
+   type="time", so tapping it still opens the picker. */
 input[type="time"] {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
     text-align: left;
 }
 

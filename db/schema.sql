@@ -98,3 +98,11 @@ CREATE TABLE IF NOT EXISTS buddy_blocks (
 
 -- New accounts get a calmer default than the original 90 minutes.
 ALTER TABLE users ALTER COLUMN interval_minutes SET DEFAULT 120;
+
+-- Small key/value store for operational state, currently just the timestamp
+-- of the last reminder sweep so /api/health can prove the scheduler is alive.
+CREATE TABLE IF NOT EXISTS system_state (
+    key         TEXT PRIMARY KEY,
+    value       TEXT NOT NULL,
+    updated_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);

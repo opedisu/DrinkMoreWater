@@ -33,74 +33,97 @@ No client-side state library, no CSS framework. The whole UI is ~1,200 lines.
 
 ## Deploy it
 
-### 1. Database
+Two supported paths. **Railway for everything is the recommended one** — this app is
+really a scheduled job with a UI attached, and a long-running container suits that far
+better than serverless: the database pool is reused instead of churning per invocation,
+the scheduler is native, and Postgres stays on the private network.
 
-Create a Postgres database (Neon, Supabase and Vercel Postgres all have free tiers), then:
+### Option A — Railway (recommended, ~$5/month)
 
-```bash
-export DATABASE_URL="postgresql://..."
-npm run db:migrate
+1. **Create the project.** New Project → Deploy from GitHub → this repo. Add a
+   **Postgres** database to the same project.
+2. **Link the Postgres service** to the app service so `DATABASE_URL` is injected, or
+   copy its connection string.
+3. **Generate and install the secrets** from a checkout on your own machine:
+
+   ```bash
+   npm install
+   railway link                      # pick the app service
+   npm run setup -- --railway
+   ```
+
+   This mints `AUTH_SECRET`, `CRON_SECRET` and the VAPID key pair locally, writes them to
+   a `0600` `.env.local`, and pushes them into Railway. Nothing is printed to your
+   terminal, so no secret lands in your scrollback or shell history.
+4. **Run the migration:** `npm run db:migrate` (with `DATABASE_URL` set).
+5. **Add the scheduler.** New service in the same project → set it to run on a cron
+   schedule of `*/15 * * * *` with:
+
+   ```bash
+   curl -fsS -H "Authorization: Bearer $CRON_SECRET" "$APP_URL/api/cron/reminders"
+   ```
+
+   Give that service the same `CRON_SECRET` and `APP_URL` variables.
+6. Set `APP_URL` to the public domain Railway gives you, and redeploy.
+
+### Option B — Vercel + Neon (free)
+
+1. Create a Neon database and copy the **pooled** connection string (the one with
+   `-pooler` in the host). The unpooled one will exhaust connections under serverless.
+2. Import the repo into Vercel.
+3. From a local checkout: `vercel link`, then `npm run setup -- --vercel`.
+4. `npm run db:migrate`.
+5. **Set up the scheduler.** The included GitHub Actions workflow runs every 15 minutes.
+   Add `APP_URL` and `CRON_SECRET` as repository secrets under
+   **Settings → Secrets and variables → Actions**.
+
+   ⚠️ **Read this one.** GitHub disables scheduled workflows in a public repository after
+   **60 days without repository activity**. If you stop committing, reminders stop, and
+   nothing tells you. Either commit something every couple of months, or use an external
+   scheduler instead (below). This is the single most likely way this app fails quietly.
+
+`vercel.json` deliberately declares **no** cron: running two schedulers against the same
+endpoint was itself a duplicate-push risk, and Vercel's Hobby plan restricts cron
+frequency anyway.
+
+### Watch the scheduler — do this on either path
+
+`/api/health` is public, carries no user data, and returns **503** once the reminder sweep
+has gone quiet for two hours:
+
+```json
+{ "ok": true, "database": "up", "scheduler": "ok", "lastSweepAgeMinutes": 7 }
 ```
 
-### 2. Generate keys
+Point a free monitor (UptimeRobot, cron-job.org, Better Stack) at it. That is what turns a
+dead scheduler into an email instead of a girlfriend who quietly stopped getting reminders.
+The app also warns on its own main screen when no reminder has fired for a day.
 
-```bash
-npm run vapid                                                      # push keys
-node -e "console.log(require('crypto').randomBytes(48).toString('base64url'))"   # AUTH_SECRET
-node -e "console.log(require('crypto').randomBytes(32).toString('base64url'))"   # CRON_SECRET
-```
+### Environment variables
 
-### 3. Environment variables
+`npm run setup` generates everything except the two you supply.
 
-Copy `.env.example` and fill it in. On Vercel these go in **Project → Settings → Environment Variables**.
-
-| Variable | Required | Purpose |
+| Variable | Supplied by | Purpose |
 |---|---|---|
-| `DATABASE_URL` | yes | Postgres connection string |
-| `AUTH_SECRET` | yes | Signs session cookies (32+ random chars) |
-| `NEXT_PUBLIC_VAPID_PUBLIC_KEY` | yes | Push public key — safe to expose |
-| `VAPID_PRIVATE_KEY` | yes | Push private key — **keep secret** |
-| `VAPID_SUBJECT` | yes | `mailto:` address for push services |
-| `CRON_SECRET` | yes | Shared secret the scheduler must present |
-| `APP_URL` | no | Public URL, used to build sign-in links |
-| `RESEND_API_KEY` | no | Sends sign-in emails. Without it, links are printed to the server log |
-| `EMAIL_FROM` | no | Sender for sign-in emails |
+| `DATABASE_URL` | you | Postgres connection string |
+| `AUTH_SECRET` | generated | Signs session cookies |
+| `NEXT_PUBLIC_VAPID_PUBLIC_KEY` | generated | Push public key — safe to expose |
+| `VAPID_PRIVATE_KEY` | generated | Push private key — **secret** |
+| `VAPID_SUBJECT` | prompted | `mailto:` contact for push services |
+| `CRON_SECRET` | generated | Bearer token the scheduler must present |
+| `APP_URL` | prompted | Public URL, used to build sign-in links |
+| `RESEND_API_KEY` | optional | Sends sign-in emails; without it they go to the server log |
+| `EMAIL_FROM` | optional | Sender address for sign-in emails |
+| `DATABASE_SSL_NO_VERIFY` | optional | Only for a provider with a self-signed cert. Disables certificate verification — avoid |
 
-Changing `VAPID_PRIVATE_KEY` later invalidates every existing push subscription.
-
-### 4. Deploy
-
-Push to GitHub and import the repo into Vercel. No build configuration needed.
-
-### 5. Wire up the scheduler
-
-Reminders only go out when something calls `/api/cron/reminders` every so often.
-
-**Free path (recommended):** the included GitHub Actions workflow runs every 15 minutes.
-Add two repository secrets under **Settings → Secrets and variables → Actions**:
-
-- `APP_URL` — e.g. `https://your-app.vercel.app`
-- `CRON_SECRET` — the same value as in your Vercel environment
-
-**Vercel Cron:** `vercel.json` already declares a 15-minute schedule, but Vercel's Hobby
-plan only runs cron jobs once a day. On a Pro plan it works as declared and you can delete
-`.github/workflows/reminders.yml`.
-
-You can always trigger a sweep by hand:
-
-```bash
-curl -H "Authorization: Bearer $CRON_SECRET" https://your-app.vercel.app/api/cron/reminders
-```
-
-It returns how many users were considered, nudged and skipped.
-
----
+Rotating `VAPID_PRIVATE_KEY` unsubscribes every device. Rotating `AUTH_SECRET` signs
+everyone out. `npm run setup` keeps existing values unless you pass `--rotate`.
 
 ## Run it locally
 
 ```bash
 npm install
-cp .env.example .env.local      # fill in DATABASE_URL, AUTH_SECRET, VAPID keys, CRON_SECRET
+npm run setup        # generates every secret, prompts for DATABASE_URL
 npm run db:migrate
 npm run dev
 ```
@@ -162,7 +185,9 @@ src/
     ├── goal.ts           Goal calculation and pacing
     ├── push.ts           Web Push delivery
     └── time.ts           Timezone-aware day and clock handling
-db/schema.sql             Database schema
+    └── buddies.ts        Buddy lists, followers and blocking
+db/schema.sql             Database schema (additive, safe to re-run)
+scripts/setup-env.mjs     Generates secrets and installs them in your host
 ```
 
 ---

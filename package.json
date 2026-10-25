@@ -9,7 +9,8 @@
         "start": "next start",
         "lint": "eslint .",
         "db:migrate": "node scripts/migrate.mjs",
-        "vapid": "node scripts/generate-vapid.mjs"
+        "vapid": "node scripts/generate-vapid.mjs",
+        "setup": "node scripts/setup-env.mjs"
     },
     "dependencies": {
         "next": "16.4.3",

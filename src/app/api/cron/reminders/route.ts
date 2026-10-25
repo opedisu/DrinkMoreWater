@@ -161,6 +161,15 @@ export async function GET(request: Request): Promise<NextResponse> {
         );
     }
 
+    // Recorded so /api/health can tell an uptime monitor the scheduler is
+    // still alive. This is what turns a silent failure into an alert.
+    await query(
+        `INSERT INTO system_state (key, value, updated_at)
+         VALUES ('last_sweep', $1, NOW())
+         ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = NOW()`,
+        [now.toISOString()]
+    );
+
     return NextResponse.json({
         ok: true,
         ranAt: now.toISOString(),

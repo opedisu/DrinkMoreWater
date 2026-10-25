@@ -1679,3 +1679,25 @@ input[type="time"]::-webkit-date-and-time-value {
         animation: none;
     }
 }
+
+/* iOS lays out position:fixed against the layout viewport, but shrinks the
+   visual viewport for the keyboard, so the nav strands itself mid screen
+   while a field is focused and often stays there afterwards.
+
+   It is also useless in that moment: the keyboard covers it, and it sits
+   on top of the field being typed into. So it steps out of the way. */
+body:has(input:focus, textarea:focus, select:focus) .nav {
+    opacity: 0;
+    pointer-events: none;
+    transform: translate(-50%, 140%);
+}
+
+.nav {
+    transition: opacity var(--dur) var(--ease), transform var(--dur) var(--ease);
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .nav {
+        transition: none;
+    }
+}

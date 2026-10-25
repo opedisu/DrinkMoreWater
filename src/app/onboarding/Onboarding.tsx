@@ -140,9 +140,7 @@ export default function Onboarding({ initialName }: { initialName: string }) {
 
             <div className="card center">
                 <div className="card-title">Your daily goal</div>
-                <div style={{ fontSize: 34, fontWeight: 750, letterSpacing: "-0.03em" }}>
-                    {formatAmount(goalMl, "ml")}
-                </div>
+                <div className="goal-preview">{formatAmount(goalMl, "ml")}</div>
                 <p className="muted" style={{ marginTop: 6 }}>
                     Based on 35 ml per kg, plus your activity and climate.
                 </p>

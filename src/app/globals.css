@@ -12,9 +12,11 @@
     --warning: #fbbf24;
     --danger: #f87171;
 
-    /* The vessel's liquid. Lighter at the surface, denser at the base. */
+    /* The vessel's liquid. The gradient is anchored to the liquid, not the
+       glass, so a deep ramp made the colour darken as the day progressed.
+       It is a hint of depth now, not a gradient you notice. */
     --liquid-top: #4cc5f7;
-    --liquid-bottom: #1187ca;
+    --liquid-bottom: #2ea7de;
 
     /* Shape scale. The rule is: surfaces 22, controls 14, anything
        interactive-and-small is a full pill. Nothing else. */
@@ -344,9 +346,52 @@ select {
     stroke: rgba(160, 215, 245, 0.34);
 }
 
-/* Driven by an inline translateY from the fill fraction. */
+/* Driven by an inline transform from the fill fraction and the device tilt.
+   The curve overshoots slightly: water does not glide to a new level, it
+   rises past it and comes back. */
 .vessel-liquid {
-    transition: transform var(--dur-slow) var(--ease);
+    transform: translateY(var(--surface, 0px));
+    transition: transform 900ms cubic-bezier(0.33, 1.22, 0.56, 1);
+}
+
+/* Tilt is a separate wrapper so it can track the device quickly while the
+   fill level keeps its slower, overshooting curve. */
+.vessel-tilt {
+    transform-box: fill-box;
+    transform-origin: center;
+    transform: rotate(var(--tilt, 0deg));
+    transition: transform 240ms linear;
+}
+
+/* Amplitude lives on the band, not the body, so it can be scaled. Idle water
+   is nearly flat; a pour disturbs it and it damps back down. Perpetual
+   uniform motion is the thing that reads as an animation rather than water. */
+.vessel-waves {
+    transform-box: fill-box;
+    transform-origin: center;
+    transform: scaleY(1);
+}
+
+.vessel-waves.slosh {
+    animation: slosh 1600ms var(--ease) forwards;
+}
+
+@keyframes slosh {
+    0% {
+        transform: scaleY(2.8);
+    }
+    30% {
+        transform: scaleY(1.7);
+    }
+    58% {
+        transform: scaleY(0.82);
+    }
+    80% {
+        transform: scaleY(1.12);
+    }
+    100% {
+        transform: scaleY(1);
+    }
 }
 
 /* Translucent: the paths close to the bottom of the vessel, so at full
@@ -356,12 +401,12 @@ select {
 }
 
 .wave-back {
-    opacity: 0.22;
+    opacity: 0.16;
     animation: drift 7s linear infinite;
 }
 
 .wave-front {
-    opacity: 0.38;
+    opacity: 0.95;
     animation: drift 4.5s linear infinite reverse;
 }
 
@@ -371,6 +416,14 @@ select {
     to {
         transform: translateX(104px);
     }
+}
+
+/* The meniscus. A lit edge where liquid meets air is most of what the eye
+   uses to read a surface as water rather than a shape. */
+.wave-crest {
+    stroke: rgba(226, 248, 255, 0.5);
+    stroke-width: 1.6;
+    animation: drift 4.5s linear infinite reverse;
 }
 
 .vessel-tick {
@@ -1154,4 +1207,15 @@ select {
     opacity: 0.5;
     background: none;
     border-color: transparent;
+}
+
+/* The one number in the app that was still in the sans face. Every other
+   figure is mono and tabular, and this one changes as you drag the weight,
+   so it was also the one most likely to jitter. */
+.goal-preview {
+    font-family: var(--font-mono), ui-monospace, monospace;
+    font-variant-numeric: tabular-nums;
+    font-size: 34px;
+    font-weight: 600;
+    letter-spacing: -0.05em;
 }

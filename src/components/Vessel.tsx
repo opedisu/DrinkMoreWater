@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore } from "react";
+import { tiltNeedsPermission, useTilt } from "@/lib/useTilt";
 
 /**
  * The day's intake as a filling cylinder. Purely presentational: the readout
@@ -11,7 +12,7 @@ import { useEffect, useRef, useState } from "react";
 const W = 104;
 const H = 250;
 const WALL = 3;
-const AMP = 9;
+const AMP = 11;
 const INNER = H - WALL * 2;
 
 export default function Vessel({ totalMl, goalMl }: { totalMl: number; goalMl: number }) {
@@ -28,6 +29,13 @@ export default function Vessel({ totalMl, goalMl }: { totalMl: number; goalMl: n
     // does not celebrate a removal.
     const [splash, setSplash] = useState(0);
     const previousTotal = useRef(totalMl);
+    const svgRef = useRef<SVGSVGElement>(null);
+    const requestTilt = useTilt(svgRef);
+
+    // The server cannot know whether this browser gates the sensor, and
+    // reading it during render produced a hydration mismatch. The server
+    // snapshot is false, so the first client render agrees with the HTML.
+    const askable = useSyncExternalStore(subscribeNever, tiltNeedsPermission, () => false);
 
     useEffect(() => {
         if (totalMl > previousTotal.current) setSplash((n) => n + 1);
@@ -35,7 +43,19 @@ export default function Vessel({ totalMl, goalMl }: { totalMl: number; goalMl: n
     }, [totalMl]);
 
     return (
-        <svg className="vessel" viewBox={`0 0 ${W} ${H}`} width={W} height={H} aria-hidden="true">
+        <svg
+            ref={svgRef}
+            className="vessel"
+            viewBox={`0 0 ${W} ${H}`}
+            width={W}
+            height={H}
+            // iOS only hands over the sensor after a gesture, so a tap on the
+            // water asks for it. Everywhere else the listener is already on.
+            onClick={askable ? () => void requestTilt() : undefined}
+            role={askable ? "button" : undefined}
+            aria-label={askable ? "Tilt the water with your phone" : undefined}
+            aria-hidden={askable ? undefined : true}
+        >
             <defs>
                 <clipPath id="vesselClip">
                     <rect x={WALL} y={WALL} width={W - WALL * 2} height={INNER} rx={26} />
@@ -58,10 +78,17 @@ export default function Vessel({ totalMl, goalMl }: { totalMl: number; goalMl: n
             />
 
             <g clipPath="url(#vesselClip)">
-                <g className="vessel-liquid" style={{ transform: `translateY(${surfaceY}px)` }}>
-                    <rect x="0" y={AMP} width={W} height={H} fill="url(#vesselFill)" />
-                    <path className="wave wave-back" d={wave(W, AMP)} />
-                    <path className="wave wave-front" d={wave(W, AMP)} />
+                <g className="vessel-tilt">
+                    <g
+                        className="vessel-liquid"
+                        style={{ "--surface": `${surfaceY}px` } as React.CSSProperties}
+                    >
+                    <rect x={-W} y={AMP} width={W * 3} height={H} fill="url(#vesselFill)" />
+                    <g className={`vessel-waves${splash > 0 ? " slosh" : ""}`} key={splash}>
+                        <path className="wave wave-back" d={wave(W, AMP * 0.72)} />
+                        <path className="wave wave-front" d={wave(W, AMP)} />
+                        <path className="wave-crest" d={waveLine(W, AMP)} fill="none" />
+                    </g>
 
                     {splash > 0 && (
                         <g className="splash" key={splash}>
@@ -69,6 +96,7 @@ export default function Vessel({ totalMl, goalMl }: { totalMl: number; goalMl: n
                             <ellipse cx={W / 2} cy={AMP} rx={30} ry={7} />
                         </g>
                     )}
+                    </g>
                 </g>
             </g>
 
@@ -93,6 +121,16 @@ export default function Vessel({ totalMl, goalMl }: { totalMl: number; goalMl: n
  * must translate by this same W.
  */
 function wave(width: number, amp: number): string {
+    return `${waveLine(width, amp)} L ${width * 2} ${amp * 2} L ${-width} ${amp * 2} Z`;
+}
+
+/** The surface curve on its own, open, so it can be stroked. */
+function waveLine(width: number, amp: number): string {
     const period = `q ${width / 4} ${-amp} ${width / 2} 0 q ${width / 4} ${amp} ${width / 2} 0`;
-    return `M ${-width} ${amp} ${period} ${period} ${period} L ${width * 2} ${H} L ${-width} ${H} Z`;
+    return `M ${-width} ${amp} ${period} ${period} ${period}`;
+}
+
+/** The answer never changes for the life of the page. */
+function subscribeNever(): () => void {
+    return () => {};
 }

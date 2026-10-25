@@ -114,20 +114,20 @@ export default function SettingsScreen({ initial, vapidKey }: { initial: Snapsho
 
                 <section className="card stack">
                     <div className="card-title">Reminders</div>
-                    <div style={{ marginBottom: 16 }}>
+                    <div className="setting-intro">
                         <InstallGuide compact />
                     </div>
 
                     {push && push.state !== "enabled" && push.state !== "prompt" && (
                         <div className="banner warn">
-                            <Warning size={18} weight="fill" style={{ flex: "0 0 auto", marginTop: 1 }} />
+                            <Warning size={18} weight="fill" />
                             <div>{push.detail}</div>
                         </div>
                     )}
 
-                    <div className="row-between">
+                    <div className="setting-row">
                         <div>
-                            <div style={{ fontWeight: 600, fontSize: 14 }}>Push on this device</div>
+                            <div className="setting-label">Push on this device</div>
                             <div className="muted">
                                 {push?.state === "enabled" ? "On. Nudges will arrive here." : "Off"}
                             </div>
@@ -140,9 +140,9 @@ export default function SettingsScreen({ initial, vapidKey }: { initial: Snapsho
                         />
                     </div>
 
-                    <div className="row-between">
+                    <div className="setting-row">
                         <div>
-                            <div style={{ fontWeight: 600, fontSize: 14 }}>Only when behind</div>
+                            <div className="setting-label">Only when behind</div>
                             <div className="muted">Skip the nudge if you are ahead of pace.</div>
                         </div>
                         <button
@@ -260,9 +260,9 @@ export default function SettingsScreen({ initial, vapidKey }: { initial: Snapsho
                         </div>
                     </div>
 
-                    <div className="row-between">
+                    <div className="setting-row">
                         <div>
-                            <div style={{ fontWeight: 600, fontSize: 14 }}>Hot climate</div>
+                            <div className="setting-label">Hot climate</div>
                             <div className="muted">Adds 400 ml to the recommendation.</div>
                         </div>
                         <button
@@ -322,7 +322,7 @@ export default function SettingsScreen({ initial, vapidKey }: { initial: Snapsho
                     {confirmingDelete ? (
                         <div className="stack">
                             <div className="banner warn">
-                                <Warning size={18} weight="fill" style={{ flex: "0 0 auto", marginTop: 1 }} />
+                                <Warning size={18} weight="fill" />
                                 <div>
                                     This deletes your account and every drink you have logged. It
                                     cannot be undone. Type <strong>{data.user.email}</strong> to

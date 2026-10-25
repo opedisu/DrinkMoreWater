@@ -1,4 +1,9 @@
 :root {
+    /* Native controls (the time picker glyph, select menus, scrollbars) are
+       drawn by the browser. Without this they render for a light page, so
+       the clock icons came out near black on a dark field. */
+    color-scheme: dark;
+
     --bg: #03101c;
     --bg-elevated: #0a2036;
     --border: rgba(255, 255, 255, 0.09);
@@ -1368,4 +1373,37 @@ select {
 
 .banner.warn > svg {
     color: var(--warning);
+}
+
+/* ---------- settings rows ---------- */
+
+/* Each setting is its own row with a hairline above it. Without separation
+   the toggles ran together and read as one undifferentiated block. */
+.setting-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 15px 0;
+    border-top: 1px solid var(--border);
+}
+
+.setting-row + .field,
+.setting-row + .field-row {
+    padding-top: 15px;
+    border-top: 1px solid var(--border);
+}
+
+.setting-label {
+    font-size: 14px;
+    font-weight: 600;
+    margin-bottom: 2px;
+}
+
+.setting-row .muted {
+    line-height: 1.45;
+}
+
+.setting-intro {
+    margin-bottom: 4px;
 }

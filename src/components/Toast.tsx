@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { CheckCircle, Drop, Warning } from "@phosphor-icons/react";
 
 export type ToastKind = "info" | "success" | "error";
 
@@ -28,10 +29,13 @@ export function useToast() {
 
 export function Toast({ toast }: { toast: ToastState | null }) {
     if (!toast) return null;
-    const icon = toast.kind === "success" ? "✅" : toast.kind === "error" ? "⚠️" : "💧";
+    const Glyph = toast.kind === "success" ? CheckCircle : toast.kind === "error" ? Warning : Drop;
+    const tone =
+        toast.kind === "success" ? "var(--success)" : toast.kind === "error" ? "var(--danger)" : "var(--accent)";
+
     return (
         <div className={`toast ${toast.kind}`} role="status" aria-live="polite">
-            <span>{icon}</span>
+            <Glyph size={18} weight="fill" color={tone} style={{ flex: "0 0 auto" }} />
             <span>{toast.message}</span>
         </div>
     );

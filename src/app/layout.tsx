@@ -1,5 +1,13 @@
 import type { Metadata, Viewport } from "next";
+import { Azeret_Mono, Schibsted_Grotesk } from "next/font/google";
 import "./globals.css";
+
+// Schibsted Grotesk was drawn for news interfaces, so its figures stay legible
+// at the 10-12px label sizes this app leans on. Azeret Mono is a geometric mono
+// built for data; it carries the numerals and stops the readout jittering as
+// digits change width. Deliberately not Geist, which every Next.js app wears.
+const sans = Schibsted_Grotesk({ subsets: ["latin"], variable: "--font-sans", display: "swap" });
+const mono = Azeret_Mono({ subsets: ["latin"], variable: "--font-mono", display: "swap" });
 
 export const metadata: Metadata = {
     title: "DrinkMoreWater",
@@ -20,7 +28,7 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-    themeColor: "#082f49",
+    themeColor: "#03101c",
     width: "device-width",
     initialScale: 1,
     maximumScale: 1,
@@ -29,7 +37,7 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
     return (
-        <html lang="en">
+        <html lang="en" className={`${sans.variable} ${mono.variable}`}>
             <body>{children}</body>
         </html>
     );

@@ -1,30 +1,45 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import {
+    BeerBottle,
+    Bell,
+    BellSlash,
+    Coffee,
+    Drop,
+    Fire,
+    Jar,
+    PintGlass,
+    Star,
+    X,
+    type Icon
+} from "@phosphor-icons/react";
 import Nav from "@/components/Nav";
-import Ring from "@/components/Ring";
+import Vessel from "@/components/Vessel";
 import Confetti from "@/components/Confetti";
 import { Toast, useToast } from "@/components/Toast";
 import { adoptBrowserTimezone, useSnapshot } from "@/lib/useMe";
 import type { Snapshot } from "@/lib/snapshot";
 import { formatAmount, ML_PER_OZ } from "@/lib/goal";
 import { BADGE_BY_CODE } from "@/lib/progression";
+import { formatClock } from "@/lib/time";
 import { enablePush, pushStatus, registerServiceWorker, type PushStatus } from "@/lib/pushClient";
 import type { Unit } from "@/lib/types";
 
 // Round numbers in whichever unit the user reads, not converted oddities.
-const PRESETS: Record<Unit, { amountMl: number; display: string; emoji: string }[]> = {
+// The glyph escalates with volume, so size is readable before the label is.
+const PRESETS: Record<Unit, { amountMl: number; display: string; Glyph: Icon }[]> = {
     ml: [
-        { amountMl: 150, display: "150 ml", emoji: "☕" },
-        { amountMl: 250, display: "250 ml", emoji: "🥛" },
-        { amountMl: 500, display: "500 ml", emoji: "🍶" },
-        { amountMl: 750, display: "750 ml", emoji: "🏺" }
+        { amountMl: 150, display: "150 ml", Glyph: Coffee },
+        { amountMl: 250, display: "250 ml", Glyph: PintGlass },
+        { amountMl: 500, display: "500 ml", Glyph: BeerBottle },
+        { amountMl: 750, display: "750 ml", Glyph: Jar }
     ],
     oz: [
-        { amountMl: Math.round(6 * ML_PER_OZ), display: "6 oz", emoji: "☕" },
-        { amountMl: Math.round(8 * ML_PER_OZ), display: "8 oz", emoji: "🥛" },
-        { amountMl: Math.round(16 * ML_PER_OZ), display: "16 oz", emoji: "🍶" },
-        { amountMl: Math.round(24 * ML_PER_OZ), display: "24 oz", emoji: "🏺" }
+        { amountMl: Math.round(6 * ML_PER_OZ), display: "6 oz", Glyph: Coffee },
+        { amountMl: Math.round(8 * ML_PER_OZ), display: "8 oz", Glyph: PintGlass },
+        { amountMl: Math.round(16 * ML_PER_OZ), display: "16 oz", Glyph: BeerBottle },
+        { amountMl: Math.round(24 * ML_PER_OZ), display: "24 oz", Glyph: Jar }
     ]
 };
 
@@ -61,12 +76,12 @@ export default function TodayScreen({ initial, vapidKey }: { initial: Snapshot; 
                 if (body.justHitGoal) {
                     setCelebration(Date.now());
                     setTimeout(() => setCelebration(0), 2600);
-                    show(`Goal reached — ${body.rewards.streakCurrent} day streak 🔥`, "success");
+                    show(`Goal reached. ${body.rewards.streakCurrent} day streak.`, "success");
                 } else if (body.excessive) {
-                    show("That is well past your goal. Easy does it 💙", "error");
+                    show("That is well past your goal. Easy does it.", "error");
                 } else if (body.newBadges?.length) {
                     const badge = BADGE_BY_CODE.get(body.newBadges[0]);
-                    show(`Badge unlocked: ${badge?.emoji ?? "🏅"} ${badge?.name ?? ""}`, "success");
+                    show(`Badge unlocked: ${badge?.name ?? "a new badge"}`, "success");
                 } else {
                     show(`Logged ${formatAmount(amountMl, unit)}`, "success");
                 }
@@ -120,7 +135,7 @@ export default function TodayScreen({ initial, vapidKey }: { initial: Snapshot; 
         if (!result.ok) {
             show(result.error ?? "Could not turn on reminders.", "error");
         } else {
-            show("Reminders are on for this device 🔔", "success");
+            show("Reminders are on for this device.", "success");
             await refresh();
         }
         setPush(await pushStatus(vapidKey || undefined));
@@ -144,18 +159,20 @@ export default function TodayScreen({ initial, vapidKey }: { initial: Snapshot; 
                         <strong>{user.name || "there"}</strong>
                     </div>
                     <div className="row" style={{ gap: 8 }}>
-                        <span className="ring-pct" title="Current streak">
-                            🔥 {rewards.streakCurrent}
+                        <span className="pill" role="img" aria-label={`${rewards.streakCurrent} day streak`}>
+                            <Fire size={14} weight="fill" aria-hidden="true" />
+                            <span className="pill-num">{rewards.streakCurrent}</span>
                         </span>
-                        <span className="ring-pct" title={rewards.levelTitle}>
-                            ⭐ Lv {rewards.level}
+                        <span className="pill" role="img" aria-label={`Level ${rewards.level}, ${rewards.levelTitle}`}>
+                            <Star size={14} weight="fill" aria-hidden="true" />
+                            <span className="pill-num">Lv {rewards.level}</span>
                         </span>
                     </div>
                 </header>
 
                 {push && (push.state === "prompt" || push.state === "needs-install" || push.state === "denied") && (
                     <div className={`banner${push.state === "prompt" ? "" : " warn"}`} style={{ marginBottom: 14 }}>
-                        <span>🔔</span>
+                        <Bell size={18} weight="fill" style={{ flex: "0 0 auto", marginTop: 1 }} />
                         <div>
                             {push.detail}
                             {push.state === "prompt" && (
@@ -171,27 +188,27 @@ export default function TodayScreen({ initial, vapidKey }: { initial: Snapshot; 
 
                 {reminderHealth && (
                     <div className="banner warn" style={{ marginBottom: 14 }}>
-                        <span>🔕</span>
+                        <BellSlash size={18} weight="fill" style={{ flex: "0 0 auto", marginTop: 1 }} />
                         <div>{reminderHealth}</div>
                     </div>
                 )}
 
-                <section className="card">
-                    <Ring
+                <section className="card reveal">
+                    <Vessel
                         totalMl={today.totalMl}
                         goalMl={today.goalMl}
                         pacedTargetMl={today.pacedTargetMl}
                         primaryLabel={formatAmount(today.totalMl, unit)}
                         goalLabel={formatAmount(today.goalMl, unit)}
                     />
-                    <p className="center muted" style={{ marginTop: 10 }}>
+                    <p className="center muted" style={{ marginTop: 12 }}>
                         {remaining > 0
                             ? `${formatAmount(remaining, unit)} to go today`
-                            : "You are done for today — nice work 🎉"}
+                            : "You are done for today. Nice work."}
                     </p>
                 </section>
 
-                <section className="card">
+                <section className="card reveal" style={{ animationDelay: "60ms" }}>
                     <div className="card-title">Log a drink</div>
                     <div className="quick-grid">
                         {presets.map((preset) => (
@@ -200,8 +217,11 @@ export default function TodayScreen({ initial, vapidKey }: { initial: Snapshot; 
                                 className="quick"
                                 disabled={busy}
                                 onClick={() => log(preset.amountMl)}
+                                aria-label={`Log ${preset.display}`}
                             >
-                                <span className="quick-emoji">{preset.emoji}</span>
+                                <span className="quick-icon">
+                                    <preset.Glyph size={24} weight="duotone" />
+                                </span>
                                 <span className="quick-amount">{preset.display}</span>
                             </button>
                         ))}
@@ -248,7 +268,7 @@ export default function TodayScreen({ initial, vapidKey }: { initial: Snapshot; 
                     )}
                 </section>
 
-                <section className="card">
+                <section className="card reveal" style={{ animationDelay: "120ms" }}>
                     <div className="card-title">Level {rewards.level} · {rewards.levelTitle}</div>
                     <div className="level-bar">
                         <div
@@ -264,22 +284,21 @@ export default function TodayScreen({ initial, vapidKey }: { initial: Snapshot; 
                     </div>
                 </section>
 
-                <section className="card">
+                <section className="card reveal" style={{ animationDelay: "180ms" }}>
                     <div className="card-title">Today&apos;s log</div>
                     {today.logs.length === 0 ? (
-                        <p className="muted">Nothing yet. That first glass is right there 👆</p>
+                        <p className="muted">Nothing yet. The first glass is one tap away.</p>
                     ) : (
                         today.logs.map((entry) => (
                             <div className="log-item" key={entry.id}>
                                 <div className="log-main">
-                                    <span>💧</span>
+                                    <span className="log-icon">
+                                        <Drop size={17} weight="fill" />
+                                    </span>
                                     <div>
                                         <div className="log-amount">{formatAmount(entry.amount_ml, unit)}</div>
                                         <div className="log-time">
-                                            {new Date(entry.created_at).toLocaleTimeString([], {
-                                                hour: "2-digit",
-                                                minute: "2-digit"
-                                            })}
+                                            {formatClock(user.timezone, new Date(entry.created_at))}
                                         </div>
                                     </div>
                                 </div>
@@ -289,9 +308,9 @@ export default function TodayScreen({ initial, vapidKey }: { initial: Snapshot; 
                                         await fetch(`/api/intake?id=${entry.id}`, { method: "DELETE" });
                                         await refresh();
                                     }}
-                                    aria-label="Remove entry"
+                                    aria-label={`Remove ${formatAmount(entry.amount_ml, unit)} entry`}
                                 >
-                                    ✕
+                                    <X size={14} weight="bold" />
                                 </button>
                             </div>
                         ))
@@ -322,5 +341,5 @@ function staleReminderWarning(lastRemindAt: string | null): string | null {
     if (hours < 24) return null;
 
     const days = Math.floor(hours / 24);
-    return `No reminder has gone out for ${days === 1 ? "a day" : `${days} days`}. The scheduler may have stopped — worth checking.`;
+    return `No reminder has gone out for ${days === 1 ? "a day" : `${days} days`}. The scheduler may have stopped, so it is worth checking.`;
 }

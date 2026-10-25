@@ -52,7 +52,7 @@ export async function pushStatus(vapidKey: string | undefined): Promise<PushStat
         if (isIos() && !isStandalone()) {
             return {
                 state: "needs-install",
-                detail: "On iPhone, add this app to your Home Screen first — Safari only allows reminders for installed apps."
+                detail: "On iPhone, add this app to your Home Screen first. Safari only allows reminders for installed apps."
             };
         }
         return { state: "unsupported", detail: "This browser cannot deliver push reminders." };
@@ -60,7 +60,7 @@ export async function pushStatus(vapidKey: string | undefined): Promise<PushStat
     if (isIos() && !isStandalone()) {
         return {
             state: "needs-install",
-            detail: "Tap Share → Add to Home Screen, then open it from there to turn on reminders."
+            detail: "Tap Share, then Add to Home Screen, then open it from there to turn on reminders."
         };
     }
     if (Notification.permission === "denied") {

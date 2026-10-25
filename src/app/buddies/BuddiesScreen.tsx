@@ -1,5 +1,7 @@
 "use client";
 
+import { Eye, Fire, Star, X } from "@phosphor-icons/react";
+
 import { useCallback, useState } from "react";
 import Nav from "@/components/Nav";
 import { Toast, useToast } from "@/components/Toast";
@@ -78,7 +80,7 @@ export default function BuddiesScreen({
         }
         setInput("");
         await load();
-        show(`You are now following ${body.name} 💞`, "success");
+        show(`You are now following ${body.name}.`, "success");
     }
 
     async function nudge(buddy: BuddySummary) {
@@ -88,11 +90,11 @@ export default function BuddiesScreen({
             body: JSON.stringify({ buddyId: buddy.id })
         });
         const body = await response.json();
-        show(response.ok ? `Nudge sent to ${buddy.name} 💧` : body.error ?? "Could not send.", response.ok ? "success" : "error");
+        show(response.ok ? `Nudge sent to ${buddy.name}.` : body.error ?? "Could not send.", response.ok ? "success" : "error");
     }
 
     async function shareCode() {
-        const text = `Join me on DrinkMoreWater — my buddy code is ${buddyCode}`;
+        const text = `Join me on DrinkMoreWater. My buddy code is ${buddyCode}`;
         if (navigator.share) {
             await navigator.share({ title: "DrinkMoreWater", text }).catch(() => undefined);
             return;
@@ -152,7 +154,7 @@ export default function BuddiesScreen({
                     <div className="card-title">Following</div>
                     {buddies.length === 0 ? (
                         <p className="muted">
-                            No buddies yet. Hydration is more fun with someone to beat 😄
+                            No buddies yet. Hydration is more fun with someone to beat.
                         </p>
                     ) : (
                         buddies.map((buddy) => {
@@ -164,8 +166,15 @@ export default function BuddiesScreen({
                                             <div style={{ fontWeight: 650 }}>{buddy.name}</div>
                                             <div className="muted">
                                                 {formatAmount(buddy.today_ml, buddy.unit)} of{" "}
-                                                {formatAmount(buddy.goal_ml, buddy.unit)} · 🔥 {buddy.streak_current} · ⭐ Lv{" "}
-                                                {buddy.level}
+                                                {formatAmount(buddy.goal_ml, buddy.unit)}
+                                                <span className="inline-stat" role="img" aria-label={`${buddy.streak_current} day streak`}>
+                                                    <Fire size={13} weight="fill" aria-hidden="true" />
+                                                    {buddy.streak_current}
+                                                </span>
+                                                <span className="inline-stat" role="img" aria-label={`Level ${buddy.level}`}>
+                                                    <Star size={13} weight="fill" aria-hidden="true" />
+                                                    Lv {buddy.level}
+                                                </span>
                                             </div>
                                         </div>
                                         <div className="row" style={{ gap: 6 }}>
@@ -180,7 +189,7 @@ export default function BuddiesScreen({
                                                     await load();
                                                 }}
                                             >
-                                                ✕
+                                                <X size={13} weight="bold" />
                                             </button>
                                         </div>
                                     </div>
@@ -193,7 +202,7 @@ export default function BuddiesScreen({
                     )}
                 </section>
                 <section className="card">
-                    <div className="card-title">Following you — {followers.length}</div>
+                    <div className="card-title">Following you · {followers.length}</div>
                     {followers.length === 0 ? (
                         <p className="muted">
                             Nobody is following you. Anyone you add here can see today&apos;s
@@ -203,7 +212,7 @@ export default function BuddiesScreen({
                         followers.map((follower) => (
                             <div className="log-item" key={follower.id}>
                                 <div className="log-main">
-                                    <span>👀</span>
+                                    <Eye size={18} weight="fill" style={{ flex: "0 0 auto", marginTop: 1 }} />
                                     <div>
                                         <div className="log-amount">{follower.name}</div>
                                         <div className="log-time">

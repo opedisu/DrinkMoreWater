@@ -155,7 +155,7 @@ export default function Onboarding({ initialName }: { initialName: string }) {
             </button>
 
             <p className="muted center" style={{ marginTop: 16, fontSize: 12 }}>
-                Reminders will stay inside {formatMinute(parseMinute(wake, 420))} –{" "}
+                Reminders will stay inside {formatMinute(parseMinute(wake, 420))} -{" "}
                 {formatMinute(parseMinute(sleep, 1380))}.
             </p>
         </main>

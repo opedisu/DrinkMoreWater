@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { Warning } from "@phosphor-icons/react";
 import { useRouter } from "next/navigation";
 import Nav from "@/components/Nav";
 import { Toast, useToast } from "@/components/Toast";
@@ -88,7 +89,7 @@ export default function SettingsScreen({ initial, vapidKey }: { initial: Snapsho
             show("Reminders turned off on this device.");
         } else {
             const result = await enablePush(vapidKey);
-            show(result.ok ? "Reminders are on 🔔" : result.error ?? "Could not enable.", result.ok ? "success" : "error");
+            show(result.ok ? "Reminders are on." : result.error ?? "Could not enable.", result.ok ? "success" : "error");
         }
         setPush(await pushStatus(vapidKey || undefined));
         await refresh();
@@ -115,7 +116,7 @@ export default function SettingsScreen({ initial, vapidKey }: { initial: Snapsho
 
                     {push && push.state !== "enabled" && push.state !== "prompt" && (
                         <div className="banner warn">
-                            <span>⚠️</span>
+                            <Warning size={18} weight="fill" style={{ flex: "0 0 auto", marginTop: 1 }} />
                             <div>{push.detail}</div>
                         </div>
                     )}
@@ -124,7 +125,7 @@ export default function SettingsScreen({ initial, vapidKey }: { initial: Snapsho
                         <div>
                             <div style={{ fontWeight: 600, fontSize: 14 }}>Push on this device</div>
                             <div className="muted">
-                                {push?.state === "enabled" ? "On — nudges will arrive here." : "Off"}
+                                {push?.state === "enabled" ? "On. Nudges will arrive here." : "Off"}
                             </div>
                         </div>
                         <button
@@ -317,7 +318,7 @@ export default function SettingsScreen({ initial, vapidKey }: { initial: Snapsho
                     {confirmingDelete ? (
                         <div className="stack">
                             <div className="banner warn">
-                                <span>⚠️</span>
+                                <Warning size={18} weight="fill" style={{ flex: "0 0 auto", marginTop: 1 }} />
                                 <div>
                                     This deletes your account and every drink you have logged. It
                                     cannot be undone. Type <strong>{data.user.email}</strong> to

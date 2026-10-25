@@ -5,6 +5,9 @@ const config: NextConfig = {
     // `pg` opens raw TCP/TLS sockets, so it must stay an external Node module
     // rather than being bundled.
     serverExternalPackages: ["pg"],
+    // Phosphor already tree-shakes because it sets sideEffects:false, but it is
+    // not in Next's default optimize list, so say so rather than rely on it.
+    experimental: { optimizePackageImports: ["@phosphor-icons/react"] },
     async headers() {
         return [
             {

@@ -1,11 +1,43 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import {
+    CalendarCheck,
+    Crown,
+    Diamond,
+    Drop,
+    Fire,
+    Lightning,
+    Medal,
+    Star,
+    SunHorizon,
+    Target,
+    Trophy,
+    UsersThree,
+    type Icon
+} from "@phosphor-icons/react";
+
 import Nav from "@/components/Nav";
 import type { Snapshot } from "@/lib/snapshot";
 import { formatAmount } from "@/lib/goal";
 import { BADGES } from "@/lib/progression";
 import type { DayTotal, Unit } from "@/lib/types";
+
+// Badge art lives here rather than in lib/progression: the award is data,
+// the glyph is presentation.
+const BADGE_ICON: Record<string, Icon> = {
+    first_sip: Drop,
+    first_goal: Target,
+    streak_3: Fire,
+    streak_7: CalendarCheck,
+    streak_30: Trophy,
+    streak_100: Diamond,
+    early_bird: SunHorizon,
+    night_finisher: Lightning,
+    logs_50: Medal,
+    logs_250: Crown,
+    buddy_up: UsersThree
+};
 
 interface StatsResponse {
     days: number;
@@ -100,15 +132,24 @@ export default function ProgressScreen({ initial }: { initial: Snapshot }) {
                     <div className="card-title">Streaks</div>
                     <div className="grid-3">
                         <div className="stat">
-                            <div className="stat-value">🔥 {initial.rewards.streakCurrent}</div>
+                            <div className="stat-value stat-ico">
+                                <Fire size={17} weight="fill" />
+                                {initial.rewards.streakCurrent}
+                            </div>
                             <div className="stat-label">Current</div>
                         </div>
                         <div className="stat">
-                            <div className="stat-value">🏅 {initial.rewards.streakBest}</div>
+                            <div className="stat-value stat-ico">
+                                <Trophy size={17} weight="fill" />
+                                {initial.rewards.streakBest}
+                            </div>
                             <div className="stat-label">Best ever</div>
                         </div>
                         <div className="stat">
-                            <div className="stat-value">⭐ {initial.rewards.level}</div>
+                            <div className="stat-value stat-ico">
+                                <Star size={17} weight="fill" />
+                                {initial.rewards.level}
+                            </div>
                             <div className="stat-label">{initial.rewards.levelTitle}</div>
                         </div>
                     </div>
@@ -116,7 +157,7 @@ export default function ProgressScreen({ initial }: { initial: Snapshot }) {
 
                 <section className="card">
                     <div className="card-title">
-                        Badges — {earned.size} of {BADGES.length}
+                        Badges · {earned.size} of {BADGES.length}
                     </div>
                     <div className="badge-grid">
                         {BADGES.map((badge) => (
@@ -125,7 +166,12 @@ export default function ProgressScreen({ initial }: { initial: Snapshot }) {
                                 className={`badge${earned.has(badge.code) ? "" : " locked"}`}
                                 title={badge.description}
                             >
-                                <div className="badge-emoji">{badge.emoji}</div>
+                                <div className="badge-icon">
+                                    {(() => {
+                                        const Glyph = BADGE_ICON[badge.code] ?? Medal;
+                                        return <Glyph size={24} weight={earned.has(badge.code) ? "fill" : "regular"} />;
+                                    })()}
+                                </div>
                                 <div className="badge-name">{badge.name}</div>
                             </div>
                         ))}

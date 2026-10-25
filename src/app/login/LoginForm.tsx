@@ -1,5 +1,7 @@
 "use client";
 
+import { Drop, EnvelopeSimple } from "@phosphor-icons/react";
+
 import { useState } from "react";
 import { useSearchParams } from "next/navigation";
 
@@ -34,7 +36,9 @@ export default function LoginForm() {
 
     return (
         <main className="hero">
-            <div className="hero-drop">💧</div>
+            <div className="hero-mark" aria-hidden="true">
+                <Drop size={30} weight="fill" />
+            </div>
             <h1 style={{ fontSize: 28 }}>Sign in</h1>
             <p className="lede" style={{ fontSize: 15, marginBottom: 26 }}>
                 No passwords. We email you a link that signs you straight in.
@@ -43,7 +47,7 @@ export default function LoginForm() {
             {status === "sent" ? (
                 <div className="card" style={{ textAlign: "left" }}>
                     <div className="banner">
-                        <span>📬</span>
+                        <EnvelopeSimple size={18} weight="fill" style={{ flex: "0 0 auto", marginTop: 1 }} />
                         <div>
                             Check <strong>{email}</strong> for your sign-in link. It works once and
                             expires in 20 minutes.
@@ -51,7 +55,7 @@ export default function LoginForm() {
                     </div>
                     {devLink && (
                         <p className="muted" style={{ marginTop: 14, wordBreak: "break-all" }}>
-                            Development mode — no email provider configured.{" "}
+                            Development mode, no email provider configured.{" "}
                             <a href={devLink}>Open the link directly</a>.
                         </p>
                     )}

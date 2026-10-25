@@ -39,6 +39,34 @@ export function localMinuteOfDay(timezone: string, at: Date = new Date()): numbe
     return (hour % 24) * 60 + minute;
 }
 
+/**
+ * Wall-clock time in the user's own zone. The locale is pinned because the
+ * server and the browser do not share one, and an unpinned format rendered
+ * "17:22" on one and "05:22 PM" on the other, which cost a hydration pass.
+ *
+ * Formatters are cached per zone: the log list would otherwise construct one
+ * per entry on every render. The catch matters because a zone the server's
+ * ICU accepts can still be unknown to an older mobile browser, and an
+ * uncaught RangeError here unmounts the whole screen.
+ */
+const clockFormatters = new Map<string, Intl.DateTimeFormat>();
+
+export function formatClock(timezone: string, at: Date): string {
+    let formatter = clockFormatters.get(timezone);
+
+    if (!formatter) {
+        const options: Intl.DateTimeFormatOptions = { hour: "2-digit", minute: "2-digit", hour12: false };
+        try {
+            formatter = new Intl.DateTimeFormat("en-GB", { ...options, timeZone: timezone });
+        } catch {
+            formatter = new Intl.DateTimeFormat("en-GB", { ...options, timeZone: "UTC" });
+        }
+        clockFormatters.set(timezone, formatter);
+    }
+
+    return formatter.format(at);
+}
+
 export function isValidTimezone(timezone: string): boolean {
     try {
         new Intl.DateTimeFormat("en-CA", { timeZone: timezone });

@@ -1598,3 +1598,36 @@ select {
     background: var(--accent-soft);
     white-space: nowrap;
 }
+
+/* ---------- time inputs ---------- */
+
+/* Grid items are min-width:auto by default, and iOS gives a time input a
+   wide intrinsic minimum, so the two fields refused to shrink into their
+   1fr tracks and overlapped each other. */
+.field-row {
+    min-width: 0;
+}
+
+.field-row > * {
+    min-width: 0;
+}
+
+.field-row input,
+.field-row select {
+    min-width: 0;
+    width: 100%;
+}
+
+/* iOS centres the value; everything else in the app is left aligned. Only
+   the alignment is forced: appearance is left alone, because the overlap
+   was a sizing problem and suppressing the native control risks taking the
+   picker with it. */
+input[type="time"] {
+    text-align: left;
+}
+
+/* Safari needs the inner fields told as well, or they stay centred. */
+input[type="time"]::-webkit-date-and-time-value {
+    text-align: left;
+    margin: 0;
+}

@@ -3,7 +3,7 @@ import { timingSafeEqual } from "crypto";
 import { query } from "@/lib/db";
 import { sendToUser } from "@/lib/push";
 import { reminderMessage } from "@/lib/messages";
-import { pacedTargetMl } from "@/lib/goal";
+import { isAwakeAt, pacedTargetMl } from "@/lib/goal";
 import { localMinuteOfDay } from "@/lib/time";
 import type { Unit } from "@/lib/types";
 
@@ -75,7 +75,7 @@ export async function GET(request: Request): Promise<NextResponse> {
         const totalMl = Number(user.today_ml);
 
         // Outside their waking window -- never wake anyone up.
-        if (minuteOfDay < user.wake_minute || minuteOfDay > user.sleep_minute) {
+        if (!isAwakeAt(minuteOfDay, user.wake_minute, user.sleep_minute)) {
             skipped += 1;
             continue;
         }

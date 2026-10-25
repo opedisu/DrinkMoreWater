@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { query } from "@/lib/db";
 import { currentUser } from "@/lib/session";
 import { isValidTimezone } from "@/lib/time";
-import { clampGoal, recommendedGoalMl } from "@/lib/goal";
+import { clampGoal, recommendedGoalMl, wakingSpanMinutes } from "@/lib/goal";
 import type { ActivityLevel, Unit } from "@/lib/types";
 
 export const runtime = "nodejs";
@@ -67,7 +67,7 @@ export async function PUT(request: Request): Promise<NextResponse> {
 
     const wakeMinute = clampMinute(payload.wakeMinute, user.wake_minute);
     const sleepMinute = clampMinute(payload.sleepMinute, user.sleep_minute);
-    if (sleepMinute - wakeMinute < 180) {
+    if (wakingSpanMinutes(wakeMinute, sleepMinute) < 180) {
         return NextResponse.json({ error: "Leave at least 3 hours between wake and sleep times." }, { status: 400 });
     }
 

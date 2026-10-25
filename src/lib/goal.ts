@@ -46,8 +46,32 @@ export function formatAmount(amountMl: number, unit: "ml" | "oz"): string {
 }
 
 /**
+ * Minutes a person is awake, for a window that may cross midnight.
+ * 10:00 to 03:00 is seventeen hours awake, not minus seven.
+ */
+export function wakingSpanMinutes(wakeMinute: number, sleepMinute: number): number {
+    return (((sleepMinute - wakeMinute) % 1440) + 1440) % 1440;
+}
+
+/** Minutes elapsed since waking, wrapping across midnight. */
+function minutesSinceWake(minuteOfDay: number, wakeMinute: number): number {
+    return (((minuteOfDay - wakeMinute) % 1440) + 1440) % 1440;
+}
+
+/** Whether this local minute falls inside the waking window. */
+export function isAwakeAt(minuteOfDay: number, wakeMinute: number, sleepMinute: number): boolean {
+    const span = wakingSpanMinutes(wakeMinute, sleepMinute);
+    if (span === 0) return false;
+    return minutesSinceWake(minuteOfDay, wakeMinute) <= span;
+}
+
+/**
  * How much should already be drunk at this point of the waking day. Used for
  * smart reminders -- someone who is ahead of pace does not need a nudge.
+ *
+ * Works in minutes since waking rather than clock time, so a night owl whose
+ * day ends at 03:00 is paced over their real seventeen hours instead of a
+ * window that runs backwards.
  */
 export function pacedTargetMl(
     goalMl: number,
@@ -55,10 +79,18 @@ export function pacedTargetMl(
     wakeMinute: number,
     sleepMinute: number
 ): number {
+    const span = wakingSpanMinutes(wakeMinute, sleepMinute);
+    if (span === 0) return 0;
+
+    const since = minutesSinceWake(minuteOfDay, wakeMinute);
+    if (since > span) {
+        // Asleep. Before today's wake nothing is expected yet; after the
+        // window closed the whole goal was.
+        return minuteOfDay < wakeMinute ? 0 : goalMl;
+    }
+
     // Aim to finish drinking an hour before bed so reminders do not cost sleep.
-    const windowEnd = Math.max(wakeMinute + 60, sleepMinute - 60);
-    if (minuteOfDay <= wakeMinute) return 0;
-    if (minuteOfDay >= windowEnd) return goalMl;
-    const progress = (minuteOfDay - wakeMinute) / (windowEnd - wakeMinute);
-    return Math.round(goalMl * progress);
+    const windowEnd = Math.max(60, span - 60);
+    if (since >= windowEnd) return goalMl;
+    return Math.round(goalMl * (since / windowEnd));
 }

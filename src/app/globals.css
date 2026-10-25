@@ -40,6 +40,19 @@
     box-sizing: border-box;
 }
 
+/* Fine grain over the whole page. Large dark gradients band badly on 8-bit
+   and OLED panels; noise dithers it away. Fixed and non-interactive so it
+   never repaints on scroll. */
+body::after {
+    content: "";
+    position: fixed;
+    inset: 0;
+    z-index: 1;
+    pointer-events: none;
+    opacity: 0.028;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
 html,
 body {
     margin: 0;
@@ -48,11 +61,12 @@ body {
 }
 
 body {
-    /* One restrained lift from the top, not a pair of coloured glows. The old
-       version also mixed in teal, which broke the single-accent rule. */
+    /* Depth comes from temperature, not from a second accent: cool at the top
+       where the vessel sits, warmer ink at the base. The bloom sits behind the
+       hero so it glows into the page instead of being boxed. */
     background:
-        radial-gradient(1200px 520px at 50% -20%, rgba(14, 165, 233, 0.13), transparent 70%),
-        var(--bg);
+        radial-gradient(680px 380px at 50% 190px, rgba(56, 189, 248, 0.15), transparent 68%),
+        linear-gradient(180deg, #06182a 0%, #03101c 44%, #020b14 100%);
     background-attachment: fixed;
     color: var(--text);
     font-family: var(--font-sans), -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
@@ -155,6 +169,25 @@ select {
 
 .card + .card {
     margin-top: 14px;
+}
+
+/* An unboxed block. A card means "a surface you touch"; everything that is
+   just information is grouped by space and a hairline instead, so the boxes
+   that remain actually signal something. */
+.section {
+    margin-top: 26px;
+    padding-top: 22px;
+    border-top: 1px solid var(--border);
+}
+
+.section:first-of-type {
+    border-top: none;
+    padding-top: 0;
+}
+
+/* The hero sits straight on the page background, inside the bloom. */
+.stage {
+    margin-bottom: 26px;
 }
 
 /* Real headings, not tracked micro-labels. Every card wearing an uppercase
@@ -812,16 +845,19 @@ select {
 }
 
 .hero h1 {
-    font-size: 40px;
-    font-weight: 750;
-    margin-bottom: 14px;
+    font-size: 30px;
+    font-weight: 650;
+    margin-bottom: 12px;
+}
+
+.lede {
+    color: var(--text-muted);
+    line-height: 1.55;
 }
 
 .hero .lede {
-    font-size: 17px;
-    color: var(--text-muted);
-    line-height: 1.55;
-    margin-bottom: 30px;
+    font-size: 16px;
+    margin-bottom: 26px;
 }
 
 .hero-mark {
@@ -837,34 +873,117 @@ select {
     box-shadow: var(--inset-hi);
 }
 
-.feature-list {
-    text-align: left;
+/* The landing page proper. Left-aligned and asymmetric: a centred stack over
+   four identical feature rows is the template everyone ships. */
+.lp {
+    max-width: 1060px;
+    margin: 0 auto;
+    padding: calc(40px + var(--safe-top)) 20px 72px;
+}
+
+.lp-hero {
     display: grid;
-    gap: 13px;
-    margin-top: 34px;
+    gap: 30px;
+    align-items: center;
+    min-height: min(78dvh, 620px);
 }
 
-.feature {
-    display: flex;
-    gap: 13px;
-    align-items: flex-start;
+.lp-copy h1 {
+    font-size: clamp(38px, 11vw, 68px);
+    font-weight: 650;
+    letter-spacing: -0.035em;
+    line-height: 1.02;
+    margin-bottom: 18px;
 }
 
-.feature-icon {
+.lp-copy .lede {
+    font-size: 17px;
+    max-width: 34ch;
+    margin-bottom: 28px;
+}
+
+.lp-cta {
+    width: auto;
+    padding-inline: 30px;
+}
+
+.lp-visual {
     display: grid;
     place-items: center;
-    width: 38px;
-    height: 38px;
-    flex: 0 0 auto;
-    border-radius: var(--radius-sm);
-    color: var(--accent);
-    background: var(--accent-soft);
 }
 
-.feature strong {
-    display: block;
-    font-size: 15px;
-    margin-bottom: 1px;
+/* Cell sizes vary with weight, so the eye gets a lead and a rhythm rather
+   than four interchangeable boxes. */
+.lp-bento {
+    display: grid;
+    gap: 12px;
+    margin-top: 56px;
+}
+
+.lp-cell {
+    padding: 22px;
+    border-radius: var(--radius);
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.055), rgba(255, 255, 255, 0.02));
+    border: 1px solid var(--border);
+    box-shadow: var(--inset-hi);
+    color: var(--accent);
+}
+
+.lp-cell-lead {
+    background:
+        radial-gradient(420px 220px at 12% 0%, rgba(56, 189, 248, 0.2), transparent 70%),
+        linear-gradient(180deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0.02));
+}
+
+.lp-cell-wide {
+    background:
+        repeating-linear-gradient(115deg, rgba(255, 255, 255, 0.035) 0 1px, transparent 1px 11px),
+        linear-gradient(180deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.02));
+}
+
+.lp-cell h2 {
+    font-size: 17px;
+    font-weight: 600;
+    letter-spacing: -0.015em;
+    color: var(--text);
+    margin: 14px 0 7px;
+}
+
+.lp-cell-lead h2 {
+    font-size: 21px;
+}
+
+.lp-cell p {
+    color: var(--text-muted);
+    font-size: 14.5px;
+    line-height: 1.55;
+    max-width: 52ch;
+}
+
+.lp-note {
+    margin-top: 40px;
+    color: var(--text-muted);
+    font-size: 12px;
+}
+
+@media (min-width: 760px) {
+    .lp-hero {
+        grid-template-columns: 1.05fr 0.95fr;
+        gap: 48px;
+    }
+
+    .lp-bento {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+    .lp-cell-lead,
+    .lp-cell-wide {
+        grid-column: span 2;
+    }
+
+    .lp-cell-lead {
+        padding: 30px;
+    }
 }
 
 .center {
@@ -954,6 +1073,62 @@ select {
     }
 
     .wave {
+        animation: none !important;
+    }
+}
+
+/* A code is read and typed character by character, so it gets the mono face
+   and real tracking. It also no longer shares a row with its buttons, which
+   overflowed the viewport at 375px. */
+.code-value {
+    font-family: var(--font-mono), ui-monospace, monospace;
+    font-variant-numeric: tabular-nums;
+    font-size: clamp(26px, 8.5vw, 32px);
+    font-weight: 600;
+    letter-spacing: 0.1em;
+    color: var(--text);
+    word-break: break-all;
+}
+
+/* Water arriving disturbs the surface. Two rings, offset, expanding from the
+   point of entry and fading. The global reduced-motion rule collapses these
+   to nothing, which is correct: this is feedback, not information. */
+.splash ellipse {
+    fill: none;
+    stroke: rgba(255, 255, 255, 0.7);
+    stroke-width: 2;
+    transform-box: fill-box;
+    transform-origin: center;
+    animation: ripple 900ms var(--ease) forwards;
+}
+
+.splash ellipse:nth-child(2) {
+    animation-delay: 150ms;
+    stroke-width: 1.5;
+}
+
+@keyframes ripple {
+    from {
+        transform: scale(0.18);
+        opacity: 0.9;
+    }
+    to {
+        transform: scale(1.9);
+        opacity: 0;
+    }
+}
+
+/* Route changes crossfade. The blanket reduced-motion rule above cannot reach
+   these pseudo-elements, so they are switched off explicitly. */
+::view-transition-old(root),
+::view-transition-new(root) {
+    animation-duration: 220ms;
+    animation-timing-function: var(--ease);
+}
+
+@media (prefers-reduced-motion: reduce) {
+    ::view-transition-old(root),
+    ::view-transition-new(root) {
         animation: none !important;
     }
 }

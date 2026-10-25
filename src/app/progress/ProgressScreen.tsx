@@ -91,7 +91,7 @@ export default function ProgressScreen({ initial }: { initial: Snapshot }) {
                     </div>
                 </header>
 
-                <section className="card">
+                <section className="section">
                     <div className="card-title">Last {days} days</div>
                     {stats ? (
                         <>
@@ -128,7 +128,7 @@ export default function ProgressScreen({ initial }: { initial: Snapshot }) {
                     )}
                 </section>
 
-                <section className="card">
+                <section className="section">
                     <div className="card-title">Streaks</div>
                     <div className="grid-3">
                         <div className="stat">
@@ -155,7 +155,7 @@ export default function ProgressScreen({ initial }: { initial: Snapshot }) {
                     </div>
                 </section>
 
-                <section className="card">
+                <section className="section">
                     <div className="card-title">
                         Badges · {earned.size} of {BADGES.length}
                     </div>

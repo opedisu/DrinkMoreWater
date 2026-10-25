@@ -73,6 +73,10 @@ export default function TodayScreen({ initial, vapidKey }: { initial: Snapshot; 
 
                 await refresh();
 
+                // A short tap is most of what makes a web app feel native on a
+                // phone. Unsupported on iOS Safari, where it is simply absent.
+                navigator.vibrate?.(body.justHitGoal ? [18, 60, 18, 60, 36] : 12);
+
                 if (body.justHitGoal) {
                     setCelebration(Date.now());
                     setTimeout(() => setCelebration(0), 2600);
@@ -193,7 +197,7 @@ export default function TodayScreen({ initial, vapidKey }: { initial: Snapshot; 
                     </div>
                 )}
 
-                <section className="card reveal">
+                <section className="stage reveal">
                     <Vessel
                         totalMl={today.totalMl}
                         goalMl={today.goalMl}
@@ -268,7 +272,7 @@ export default function TodayScreen({ initial, vapidKey }: { initial: Snapshot; 
                     )}
                 </section>
 
-                <section className="card reveal" style={{ animationDelay: "120ms" }}>
+                <section className="section reveal" style={{ animationDelay: "120ms" }}>
                     <div className="card-title">Level {rewards.level} · {rewards.levelTitle}</div>
                     <div className="level-bar">
                         <div
@@ -284,7 +288,7 @@ export default function TodayScreen({ initial, vapidKey }: { initial: Snapshot; 
                     </div>
                 </section>
 
-                <section className="card reveal" style={{ animationDelay: "180ms" }}>
+                <section className="section reveal" style={{ animationDelay: "180ms" }}>
                     <div className="card-title">Today&apos;s log</div>
                     {today.logs.length === 0 ? (
                         <p className="muted">Nothing yet. The first glass is one tap away.</p>

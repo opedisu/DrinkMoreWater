@@ -1,5 +1,6 @@
 "use client";
 
+import { ViewTransition } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { ChartLineUp, Drop, Gear, UsersThree, type Icon } from "@phosphor-icons/react";
@@ -15,7 +16,8 @@ export default function Nav() {
     const pathname = usePathname();
 
     return (
-        <nav className="nav" aria-label="Primary">
+        <ViewTransition name="nav">
+            <nav className="nav" aria-label="Primary">
             {ITEMS.map(({ href, Icon: Glyph, label }) => {
                 const active = pathname === href;
                 return (
@@ -30,8 +32,9 @@ export default function Nav() {
                         </span>
                         {label}
                     </Link>
-                );
-            })}
-        </nav>
+                    );
+                })}
+            </nav>
+        </ViewTransition>
     );
 }

@@ -1,5 +1,7 @@
 "use client";
 
+import { useEffect, useRef, useState } from "react";
+
 /**
  * The day's intake as a filling vessel rather than a progress ring. A ring
  * shows a fraction; a vessel shows a volume, which is what the user is
@@ -41,6 +43,20 @@ export default function Vessel({ totalMl, goalMl, pacedTargetMl, primaryLabel, g
      */
     const surfaceY = WALL + INNER - fraction * (INNER + AMP);
 
+    /**
+     * Water arriving should disturb the surface, not just move it. The counter
+     * only increments when the total goes up, and it keys the ripple so each
+     * log replays the animation from the start rather than reusing a finished
+     * one. Undo lowers the total and deliberately does not splash.
+     */
+    const [splash, setSplash] = useState(0);
+    const previousTotal = useRef(totalMl);
+
+    useEffect(() => {
+        if (totalMl > previousTotal.current) setSplash((n) => n + 1);
+        previousTotal.current = totalMl;
+    }, [totalMl]);
+
     return (
         <div className="vessel-wrap">
             <div className="vessel-stage">
@@ -71,6 +87,13 @@ export default function Vessel({ totalMl, goalMl, pacedTargetMl, primaryLabel, g
                             <rect x="0" y={AMP} width={W} height={H} fill="url(#vesselFill)" />
                             <path className="wave wave-back" d={wave(W, AMP)} />
                             <path className="wave wave-front" d={wave(W, AMP)} />
+
+                            {splash > 0 && (
+                                <g className="splash" key={splash}>
+                                    <ellipse cx={W / 2} cy={AMP} rx={46} ry={9} />
+                                    <ellipse cx={W / 2} cy={AMP} rx={46} ry={9} />
+                                </g>
+                            )}
                         </g>
                     </g>
 

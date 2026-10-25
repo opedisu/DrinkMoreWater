@@ -115,18 +115,14 @@ export default function BuddiesScreen({
 
                 <section className="card">
                     <div className="card-title">Your buddy code</div>
-                    <div className="row-between">
-                        <div style={{ fontSize: 28, fontWeight: 750, letterSpacing: "0.12em" }}>
-                            {buddyCode || "·····"}
-                        </div>
-                        <div className="row" style={{ gap: 6 }}>
-                            <button className="btn btn-sm btn-ghost" onClick={shareCode}>
-                                Share
-                            </button>
-                            <button className="btn btn-sm btn-ghost" onClick={rotateCode}>
-                                New code
-                            </button>
-                        </div>
+                    <div className="code-value">{buddyCode || "·····"}</div>
+                    <div className="row" style={{ gap: 8, marginTop: 14 }}>
+                        <button className="btn btn-sm btn-ghost" onClick={shareCode}>
+                            Share
+                        </button>
+                        <button className="btn btn-sm btn-ghost" onClick={rotateCode}>
+                            New code
+                        </button>
                     </div>
                     <p className="muted" style={{ marginTop: 10 }}>
                         Give this to someone so they can follow your progress. Issuing a new code
@@ -150,7 +146,7 @@ export default function BuddiesScreen({
                     </form>
                 </section>
 
-                <section className="card">
+                <section className="section">
                     <div className="card-title">Following</div>
                     {buddies.length === 0 ? (
                         <p className="muted">
@@ -201,7 +197,7 @@ export default function BuddiesScreen({
                         })
                     )}
                 </section>
-                <section className="card">
+                <section className="section">
                     <div className="card-title">Following you · {followers.length}</div>
                     {followers.length === 0 ? (
                         <p className="muted">

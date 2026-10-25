@@ -1,3 +1,4 @@
+import { ViewTransition } from "react";
 import type { Metadata, Viewport } from "next";
 import { Azeret_Mono, Schibsted_Grotesk } from "next/font/google";
 import "./globals.css";
@@ -38,7 +39,11 @@ export const viewport: Viewport = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
     return (
         <html lang="en" className={`${sans.variable} ${mono.variable}`}>
-            <body>{children}</body>
+            {/* Tabs are siblings, so they crossfade rather than slide. The nav
+                carries its own stable name so it stays put across the change. */}
+            <body>
+                <ViewTransition>{children}</ViewTransition>
+            </body>
         </html>
     );
 }

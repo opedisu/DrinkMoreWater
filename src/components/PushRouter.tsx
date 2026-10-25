@@ -1,37 +1,71 @@
 "use client";
 
-import { useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useCallback, useEffect } from "react";
+import { usePathname, useRouter } from "next/navigation";
+
+const PENDING_NAV = "dmw-pending-nav";
+
+/** Older than this and the tap was not what brought the app forward. */
+const FRESH_MS = 60_000;
+
+/** Same-origin paths only: a protocol-relative "//host" is a full URL. */
+function isSafePath(value: unknown): value is string {
+    return typeof value === "string" && value.startsWith("/") && !value.startsWith("//");
+}
 
 /**
- * Routes the page when a notification is tapped and the service worker
- * could not navigate the window itself.
+ * Takes the app to wherever a tapped notification pointed.
  *
- * client.navigate is unavailable in some browsers, iOS among them, so the
- * worker falls back to posting the destination here. This has to be mounted
- * app-wide: the reminder can be tapped while any page is open, which is
- * exactly the case that used to drop people wherever they already were.
+ * Three things have to line up, because no single mechanism covers every
+ * browser. The worker may navigate the window itself, which iOS cannot do.
+ * It may post a message, which a frozen page never receives. So it also
+ * leaves a note in the Cache API, and this reads it on waking, which is the
+ * case the other two miss.
  */
 export default function PushRouter() {
     const router = useRouter();
+    const pathname = usePathname();
 
-    useEffect(() => {
-        if (typeof navigator === "undefined" || !("serviceWorker" in navigator)) return;
+    const consumePendingNav = useCallback(async () => {
+        if (typeof caches === "undefined") return;
+        try {
+            const cache = await caches.open(PENDING_NAV);
+            const hit = await cache.match("/pending");
+            if (!hit) return;
 
-        const handler = (event: MessageEvent) => {
-            if (event.data?.type !== "navigate") return;
+            await cache.delete("/pending");
+            const { url, at } = (await hit.json()) as { url?: unknown; at?: unknown };
 
-            const url: unknown = event.data.url;
-            // Same-origin paths only. A protocol-relative "//evil.com" is a
-            // full URL, so the second character matters.
-            if (typeof url !== "string" || !url.startsWith("/") || url.startsWith("//")) return;
+            if (typeof at !== "number" || Date.now() - at > FRESH_MS) return;
+            if (!isSafePath(url) || url === pathname) return;
 
             router.push(url);
-        };
+        } catch {
+            // Storage unavailable or malformed. Nothing to act on.
+        }
+    }, [pathname, router]);
 
-        navigator.serviceWorker.addEventListener("message", handler);
-        return () => navigator.serviceWorker.removeEventListener("message", handler);
-    }, [router]);
+    useEffect(() => {
+        void consumePendingNav();
+
+        const onVisible = () => {
+            if (document.visibilityState === "visible") void consumePendingNav();
+        };
+        document.addEventListener("visibilitychange", onVisible);
+
+        const onMessage = (event: MessageEvent) => {
+            if (event.data?.type === "navigate" && isSafePath(event.data.url)) {
+                router.push(event.data.url);
+            }
+        };
+        const sw = typeof navigator !== "undefined" ? navigator.serviceWorker : undefined;
+        sw?.addEventListener("message", onMessage);
+
+        return () => {
+            document.removeEventListener("visibilitychange", onVisible);
+            sw?.removeEventListener("message", onMessage);
+        };
+    }, [consumePendingNav, router]);
 
     return null;
 }

@@ -93,18 +93,32 @@ async function logFromNotification(amountMl) {
     }
 }
 
+const PENDING_NAV = "dmw-pending-nav";
+
+/**
+ * Records where a tapped notification wants to go, somewhere the page can
+ * read once it wakes up.
+ *
+ * postMessage is not enough on its own: an installed PWA on iOS is frozen
+ * while backgrounded, so the message can arrive at a page that is not
+ * listening and is simply lost. The Cache API is reachable from both sides
+ * and survives the freeze.
+ */
+async function recordPendingNav(url) {
+    try {
+        const cache = await caches.open(PENDING_NAV);
+        await cache.put("/pending", new Response(JSON.stringify({ url, at: Date.now() })));
+    } catch {
+        // Storage unavailable. The other paths still apply.
+    }
+}
+
 /**
  * Opens the app at the notification's destination.
  *
- * This used to look for a window already on /app and only focus it. From
- * any other page the match failed, and an installed PWA answers
- * openWindow by surfacing the window it already has, so tapping a reminder
- * dropped you wherever you happened to be. It also never navigated even
- * when it did match.
- *
- * Any window of ours will do now, and it is sent to the destination.
- * client.navigate is not available everywhere, so where it is missing the
- * page is asked to route itself.
+ * Three routes, because no single one works everywhere. navigate() is
+ * absent on iOS. postMessage misses a frozen page. The cache note is read
+ * by the page when it becomes visible, which is the case those two miss.
  */
 async function openApp(url) {
     const target = new URL(url, self.location.origin).href;
@@ -112,15 +126,16 @@ async function openApp(url) {
 
     for (const client of clients) {
         if (!("focus" in client)) continue;
-
         if (client.url === target) return client.focus();
+
+        await recordPendingNav(url);
 
         if ("navigate" in client) {
             try {
                 const navigated = await client.navigate(target);
                 return (navigated || client).focus();
             } catch {
-                // Falls through to asking the page to route itself.
+                // Falls through.
             }
         }
 

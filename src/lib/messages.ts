@@ -2,31 +2,32 @@ import { formatAmount } from "./goal";
 import type { Unit } from "./types";
 
 /**
- * Reminder copy. Deliberately warm and varied -- a notification that reads
- * the same every 90 minutes gets swiped away and then switched off.
+ * Reminder copy. This is the most-read text in the product: everything else
+ * is seen once, these are seen eight times a day.
+ *
+ * The register is quiet, specific and a little dry. A notification more
+ * cheerful than the person reading it gets switched off, and emoji that
+ * carries the warmth is a sign the words are not doing their job. Where
+ * there is a real number, the number does the persuading: "400 ml to go" is
+ * finite and true, "finish strong" is noise.
  */
 const NUDGES = [
-    "Time for a glass 💧",
-    "Hydration check — grab some water",
-    "Your body called. It wants water 🚰",
-    "Quick sip break?",
-    "Water o'clock ⏰",
-    "Put the kettle down, have some water first 😄",
-    "Small sip, big difference",
-    "Still got water left in that bottle?"
+    "A glass now?",
+    "Water's there when you want it.",
+    "Still got water in that bottle?",
+    "Time for a top-up.",
+    "Worth a sip.",
+    "This is your water reminder.",
+    "Glass of water, while you think of it."
 ];
 
 const BEHIND_NUDGES = [
-    "You're a bit behind today — catch up with a glass 💧",
-    "Let's close the gap. Water time!",
-    "A glass now keeps the evening easy 🙂"
+    "Easier now than at 11pm.",
+    "A bit behind. One glass closes most of it.",
+    "Still catchable."
 ];
 
-const NEARLY_THERE = [
-    "So close! One more glass does it 🎯",
-    "Almost at your goal — finish strong 💪",
-    "One glass between you and the streak 🔥"
-];
+const NEARLY_THERE = ["One glass from done.", "Nearly there.", "Last stretch."];
 
 export function reminderMessage(options: {
     name: string;
@@ -48,24 +49,26 @@ export function reminderMessage(options: {
         title = pick(NUDGES);
     }
 
+    // The body is the number, every time. It is the part that actually moves
+    // anyone, and it is the one thing the title cannot know.
     const who = name ? `${name}, ` : "";
     return {
         title,
-        body: `${who}${remaining} left to reach ${formatAmount(goalMl, unit)} today.`
+        body: `${who}${remaining} to go today.`
     };
 }
 
 export function celebrationMessage(streak: number): { title: string; body: string } {
     if (streak >= 30) {
-        return { title: "Goal hit 🏆", body: `${streak} days in a row. This is a habit now.` };
+        return { title: "That's the goal", body: `${streak} days straight. It's a habit now, not a plan.` };
     }
     if (streak >= 7) {
-        return { title: "Goal hit 🔥", body: `${streak}-day streak and counting. Brilliant.` };
+        return { title: "That's the goal", body: `${streak} days straight.` };
     }
     if (streak > 1) {
-        return { title: "Goal hit 🎉", body: `${streak} days in a row. Keep it rolling.` };
+        return { title: "That's the goal", body: `${streak} days in a row.` };
     }
-    return { title: "Goal hit 🎉", body: "Full goal reached today. Streak started!" };
+    return { title: "That's the goal", body: "Full target, first day of the streak." };
 }
 
 function pick<T>(items: T[]): T {

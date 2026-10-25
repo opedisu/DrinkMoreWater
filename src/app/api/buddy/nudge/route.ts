@@ -3,6 +3,7 @@ import { queryOne } from "@/lib/db";
 import { currentUser } from "@/lib/session";
 import { sendToUser } from "@/lib/push";
 import { rateLimit } from "@/lib/auth";
+import { isBlocked } from "@/lib/buddies";
 
 export const runtime = "nodejs";
 
@@ -35,7 +36,9 @@ export async function POST(request: Request): Promise<NextResponse> {
         "SELECT buddy_id FROM buddies WHERE user_id = $1 AND buddy_id = $2",
         [user.id, buddyId]
     );
-    if (!link) return NextResponse.json({ error: "Not one of your buddies." }, { status: 403 });
+    if (!link || (await isBlocked(buddyId, user.id))) {
+        return NextResponse.json({ error: "Not one of your buddies." }, { status: 403 });
+    }
 
     if (!(await rateLimit(`nudge:${user.id}:${buddyId}`, 6, 3600))) {
         return NextResponse.json({ error: "You have sent plenty of nudges this hour." }, { status: 429 });

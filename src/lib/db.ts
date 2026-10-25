@@ -21,12 +21,28 @@ function createPool(): Pool {
         max: 3,
         idleTimeoutMillis: 10_000,
         connectionTimeoutMillis: 10_000,
-        // Managed Postgres (Neon, Supabase, Vercel) terminates TLS with certs
-        // that are not in the Node trust store by default.
-        ssl: connectionString.includes("localhost") || connectionString.includes("sslmode=disable")
-            ? false
-            : { rejectUnauthorized: false }
+        ssl: sslConfig(connectionString)
     });
+}
+
+/**
+ * Certificates are verified by default. Neon, Supabase and Railway all present
+ * publicly trusted certs, so this works out of the box. Set
+ * DATABASE_SSL_NO_VERIFY=true only for a provider with a self-signed cert, and
+ * understand that it removes protection against an intercepted connection.
+ */
+function sslConfig(connectionString: string): false | { rejectUnauthorized: boolean; ca?: string } {
+    if (connectionString.includes("localhost") || connectionString.includes("sslmode=disable")) {
+        return false;
+    }
+    if (process.env.DATABASE_SSL_CA) {
+        return { rejectUnauthorized: true, ca: process.env.DATABASE_SSL_CA };
+    }
+    if (process.env.DATABASE_SSL_NO_VERIFY === "true") {
+        console.warn("DATABASE_SSL_NO_VERIFY is set -- the database connection is not authenticated.");
+        return { rejectUnauthorized: false };
+    }
+    return { rejectUnauthorized: true };
 }
 
 export function pool(): Pool {

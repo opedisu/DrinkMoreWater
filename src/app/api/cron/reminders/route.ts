@@ -4,12 +4,15 @@ import { query } from "@/lib/db";
 import { sendToUser } from "@/lib/push";
 import { reminderMessage } from "@/lib/messages";
 import { pacedTargetMl } from "@/lib/goal";
-import { localDate, localMinuteOfDay } from "@/lib/time";
+import { localMinuteOfDay } from "@/lib/time";
 import type { Unit } from "@/lib/types";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
+
+/** How many users are pushed at once. Keeps the sweep fast without stampeding. */
+const CONCURRENCY = 10;
 
 interface CandidateRow {
     id: string;
@@ -22,19 +25,21 @@ interface CandidateRow {
     sleep_minute: number;
     interval_minutes: number;
     last_remind_at: string | null;
+    today_ml: string;
 }
 
 function authorised(request: Request): boolean {
     const secret = process.env.CRON_SECRET;
     if (!secret) return false;
 
-    // Vercel Cron sends `Authorization: Bearer <CRON_SECRET>`; GitHub Actions
-    // and manual runs use the same header.
+    // Header only. A secret in the query string ends up in access logs,
+    // browser history and referrer headers.
     const header = request.headers.get("authorization") ?? "";
-    const provided = header.startsWith("Bearer ") ? header.slice(7) : new URL(request.url).searchParams.get("secret") ?? "";
-    const a = Buffer.from(provided);
-    const b = Buffer.from(secret);
-    return a.length === b.length && timingSafeEqual(a, b);
+    if (!header.startsWith("Bearer ")) return false;
+
+    const provided = Buffer.from(header.slice(7));
+    const expected = Buffer.from(secret);
+    return provided.length === expected.length && timingSafeEqual(provided, expected);
 }
 
 export async function GET(request: Request): Promise<NextResponse> {
@@ -42,45 +47,38 @@ export async function GET(request: Request): Promise<NextResponse> {
         return NextResponse.json({ error: "Unauthorised." }, { status: 401 });
     }
 
-    // Only users who actually have a device registered are worth considering.
+    const now = new Date();
+
+    // One query for everything the sweep needs. Today's total is joined in per
+    // user rather than fetched in a loop, so the cost does not grow with the
+    // number of users the way an N+1 would.
     const candidates = await query<CandidateRow>(
-        `SELECT DISTINCT u.id, u.name, u.timezone, u.unit, u.goal_ml, u.smart_pacing,
-                u.wake_minute, u.sleep_minute, u.interval_minutes, u.last_remind_at
+        `SELECT u.id, u.name, u.timezone, u.unit, u.goal_ml, u.smart_pacing,
+                u.wake_minute, u.sleep_minute, u.interval_minutes, u.last_remind_at,
+                COALESCE(i.total, 0)::text AS today_ml
          FROM users u
-         JOIN push_subscriptions p ON p.user_id = u.id
-         WHERE u.reminders_on = TRUE`
+         LEFT JOIN LATERAL (
+             SELECT SUM(amount_ml) AS total
+             FROM intakes
+             WHERE user_id = u.id
+               AND local_date = (NOW() AT TIME ZONE u.timezone)::date
+         ) i ON TRUE
+         WHERE u.reminders_on = TRUE
+           AND EXISTS (SELECT 1 FROM push_subscriptions p WHERE p.user_id = u.id)`
     );
 
-    const now = new Date();
-    let sent = 0;
+    const due: CandidateRow[] = [];
     let skipped = 0;
-    const reminded: string[] = [];
 
     for (const user of candidates) {
         const minuteOfDay = localMinuteOfDay(user.timezone, now);
-        const today = localDate(user.timezone, now);
+        const totalMl = Number(user.today_ml);
 
         // Outside their waking window -- never wake anyone up.
         if (minuteOfDay < user.wake_minute || minuteOfDay > user.sleep_minute) {
             skipped += 1;
             continue;
         }
-
-        // Respect the chosen interval.
-        if (user.last_remind_at) {
-            const elapsedMinutes = (now.getTime() - new Date(user.last_remind_at).getTime()) / 60_000;
-            // 2 minutes of slack so a cron that drifts slightly still fires.
-            if (elapsedMinutes < user.interval_minutes - 2) {
-                skipped += 1;
-                continue;
-            }
-        }
-
-        const totals = await query<{ total: string }>(
-            "SELECT COALESCE(SUM(amount_ml), 0)::text AS total FROM intakes WHERE user_id = $1 AND local_date = $2",
-            [user.id, today]
-        );
-        const totalMl = Number(totals[0]?.total ?? 0);
 
         // Already done for the day.
         if (totalMl >= user.goal_ml) {
@@ -97,26 +95,70 @@ export async function GET(request: Request): Promise<NextResponse> {
             continue;
         }
 
-        const message = reminderMessage({
-            name: user.name,
-            remainingMl: user.goal_ml - totalMl,
-            goalMl: user.goal_ml,
-            unit: user.unit,
-            behind
-        });
+        due.push(user);
+    }
 
-        const delivered = await sendToUser(user.id, {
-            ...message,
-            tag: "dmw-reminder",
-            url: "/app",
-            quickAddMl: 250
-        });
+    let sent = 0;
+    const reminded: string[] = [];
 
-        if (delivered > 0) {
-            await query("UPDATE users SET last_remind_at = NOW() WHERE id = $1", [user.id]);
-            sent += 1;
-            reminded.push(user.id);
-        }
+    // Work through the due list a slice at a time.
+    for (let offset = 0; offset < due.length; offset += CONCURRENCY) {
+        const slice = due.slice(offset, offset + CONCURRENCY);
+
+        await Promise.all(
+            slice.map(async (user) => {
+                // Claim the reminder atomically. If two sweeps overlap -- or a
+                // slow run is still going when the next starts -- only one of
+                // them wins this UPDATE, so nobody is pushed twice.
+                const claim = await query<{ id: string }>(
+                    `UPDATE users
+                     SET last_remind_at = NOW()
+                     WHERE id = $1
+                       AND (
+                           last_remind_at IS NULL
+                           OR last_remind_at < NOW() - (($2::int - 2) || ' minutes')::INTERVAL
+                       )
+                     RETURNING id`,
+                    [user.id, user.interval_minutes]
+                );
+
+                if (claim.length === 0) {
+                    skipped += 1;
+                    return;
+                }
+
+                const totalMl = Number(user.today_ml);
+                const minuteOfDay = localMinuteOfDay(user.timezone, now);
+                const paced = pacedTargetMl(user.goal_ml, minuteOfDay, user.wake_minute, user.sleep_minute);
+
+                const message = reminderMessage({
+                    name: user.name,
+                    remainingMl: user.goal_ml - totalMl,
+                    goalMl: user.goal_ml,
+                    unit: user.unit,
+                    behind: totalMl < paced - 100
+                });
+
+                const delivered = await sendToUser(user.id, {
+                    ...message,
+                    tag: "dmw-reminder",
+                    url: "/app",
+                    quickAddMl: 250
+                });
+
+                if (delivered > 0) {
+                    sent += 1;
+                    reminded.push(user.id);
+                } else {
+                    // Nothing went out, so release the claim and let the next
+                    // sweep try again rather than waiting a full interval.
+                    await query("UPDATE users SET last_remind_at = $2 WHERE id = $1", [
+                        user.id,
+                        user.last_remind_at
+                    ]);
+                }
+            })
+        );
     }
 
     return NextResponse.json({

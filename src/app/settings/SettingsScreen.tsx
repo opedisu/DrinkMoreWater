@@ -26,6 +26,8 @@ export default function SettingsScreen({ initial, vapidKey }: { initial: Snapsho
     const [form, setForm] = useState(() => formFrom(initial));
     const [saving, setSaving] = useState(false);
     const [push, setPush] = useState<PushStatus | null>(null);
+    const [confirmingDelete, setConfirmingDelete] = useState(false);
+    const [deleteConfirm, setDeleteConfirm] = useState("");
 
     // Reading the browser's push permission is a subscription to an external
     // system, so it belongs in an effect.
@@ -291,9 +293,76 @@ export default function SettingsScreen({ initial, vapidKey }: { initial: Snapsho
                     {saving ? <span className="spinner" /> : "Save changes"}
                 </button>
 
+                <section className="card stack" style={{ marginTop: 14 }}>
+                    <div className="card-title">Your data</div>
+
+                    <a className="btn btn-ghost btn-sm" href="/api/account" download>
+                        Download everything we hold
+                    </a>
+
+                    <button
+                        className="btn btn-ghost btn-sm"
+                        onClick={async () => {
+                            await fetch("/api/auth/logout", {
+                                method: "POST",
+                                headers: { "Content-Type": "application/json" },
+                                body: JSON.stringify({ everywhere: true })
+                            });
+                            router.replace("/");
+                        }}
+                    >
+                        Sign out on every device
+                    </button>
+
+                    {confirmingDelete ? (
+                        <div className="stack">
+                            <div className="banner warn">
+                                <span>⚠️</span>
+                                <div>
+                                    This deletes your account and every drink you have logged. It
+                                    cannot be undone. Type <strong>{data.user.email}</strong> to
+                                    confirm.
+                                </div>
+                            </div>
+                            <input
+                                value={deleteConfirm}
+                                placeholder="Your email address"
+                                onChange={(event) => setDeleteConfirm(event.target.value)}
+                            />
+                            <div className="row">
+                                <button className="btn btn-sm btn-ghost" onClick={() => setConfirmingDelete(false)}>
+                                    Cancel
+                                </button>
+                                <button
+                                    className="btn btn-sm btn-ghost btn-danger"
+                                    disabled={deleteConfirm.trim().toLowerCase() !== data.user.email}
+                                    onClick={async () => {
+                                        const response = await fetch("/api/account", {
+                                            method: "DELETE",
+                                            headers: { "Content-Type": "application/json" },
+                                            body: JSON.stringify({ confirm: deleteConfirm })
+                                        });
+                                        if (response.ok) {
+                                            router.replace("/");
+                                        } else {
+                                            show("Could not delete the account.", "error");
+                                        }
+                                    }}
+                                >
+                                    Delete permanently
+                                </button>
+                            </div>
+                        </div>
+                    ) : (
+                        <button className="btn btn-ghost btn-sm btn-danger" onClick={() => setConfirmingDelete(true)}>
+                            Delete my account
+                        </button>
+                    )}
+                </section>
+
                 <button
                     className="btn btn-ghost btn-danger"
-                    style={{ marginTop: 10 }}
+                    style={{ marginTop: 14 }}
                     onClick={async () => {
                         await fetch("/api/auth/logout", { method: "POST" });
                         router.replace("/");

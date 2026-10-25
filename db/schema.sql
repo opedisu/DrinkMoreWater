@@ -78,3 +78,23 @@ CREATE TABLE IF NOT EXISTS rate_limits (
     count       INTEGER NOT NULL DEFAULT 0,
     window_at   TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+
+-- ---------------------------------------------------------------------------
+-- Additive migrations. Each statement is safe to run repeatedly.
+-- ---------------------------------------------------------------------------
+
+-- Lets a user invalidate every session they have ever issued ("sign out
+-- everywhere"), which a stateless cookie cannot otherwise support.
+ALTER TABLE users ADD COLUMN IF NOT EXISTS sessions_valid_from TIMESTAMPTZ NOT NULL DEFAULT NOW();
+
+-- Someone you have removed as a follower cannot follow you again.
+CREATE TABLE IF NOT EXISTS buddy_blocks (
+    user_id     BIGINT NOT NULL REFERENCES users (id) ON DELETE CASCADE,
+    blocked_id  BIGINT NOT NULL REFERENCES users (id) ON DELETE CASCADE,
+    created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    PRIMARY KEY (user_id, blocked_id),
+    CHECK (user_id <> blocked_id)
+);
+
+-- New accounts get a calmer default than the original 90 minutes.
+ALTER TABLE users ALTER COLUMN interval_minutes SET DEFAULT 120;

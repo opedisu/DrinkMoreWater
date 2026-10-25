@@ -22,6 +22,7 @@ export interface User {
     xp: number;
     last_goal_date: string | null;
     last_remind_at: string | null;
+    sessions_valid_from: string;
     created_at: string;
 }
 

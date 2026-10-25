@@ -58,12 +58,26 @@ export async function registerGoalReached(
     const bestStreak = Math.max(streak, user.streak_best);
     const xpGained = XP_PER_GOAL + Math.min(streak, 10) * XP_PER_STREAK_DAY;
 
-    await query(
+    // The WHERE clause is the real guard: if two logs cross the goal at the
+    // same moment, only one of them updates, so XP is never granted twice and
+    // buddies are only told once.
+    const claimed = await queryOne<{ id: string }>(
         `UPDATE users
          SET last_goal_date = $2, streak_current = $3, streak_best = $4, xp = xp + $5
-         WHERE id = $1`,
+         WHERE id = $1 AND last_goal_date IS DISTINCT FROM $2
+         RETURNING id`,
         [user.id, today, streak, bestStreak, xpGained]
     );
+
+    if (!claimed) {
+        return {
+            firstTimeToday: false,
+            streak,
+            bestStreak,
+            xpGained: 0,
+            newBadges: []
+        };
+    }
 
     const earned = ["first_goal"];
     if (streak >= 3) earned.push("streak_3");
@@ -96,4 +110,39 @@ export async function countLogs(userId: string): Promise<number> {
         [userId]
     );
     return Number(row?.count ?? 0);
+}
+
+/**
+ * Called after a deletion. If removing the entry drops the day back below the
+ * goal, the goal is un-awarded: the streak steps back to whatever the previous
+ * qualifying day supports, and the XP granted for it is taken back. Without
+ * this you could hit your goal, delete everything, and keep the streak.
+ */
+export async function revokeGoalIfLost(user: User, today: string, totalMl: number): Promise<boolean> {
+    if (user.last_goal_date !== today || totalMl >= user.goal_ml) return false;
+
+    const previous = await queryOne<{ local_date: string | null }>(
+        `SELECT MAX(local_date)::text AS local_date FROM (
+             SELECT local_date, SUM(amount_ml) AS total
+             FROM intakes
+             WHERE user_id = $1 AND local_date < $2
+             GROUP BY local_date
+         ) days
+         WHERE total >= $3`,
+        [user.id, today, user.goal_ml]
+    );
+
+    const previousGoalDate = previous?.local_date ?? null;
+    const continuesFromYesterday =
+        previousGoalDate !== null && daysBetween(previousGoalDate, today) === 1;
+    const streak = continuesFromYesterday ? Math.max(0, user.streak_current - 1) : 0;
+    const refund = XP_PER_GOAL + Math.min(user.streak_current, 10) * XP_PER_STREAK_DAY;
+
+    await query(
+        `UPDATE users
+         SET last_goal_date = $2, streak_current = $3, xp = GREATEST(0, xp - $4)
+         WHERE id = $1 AND last_goal_date = $5`,
+        [user.id, previousGoalDate, streak, refund, today]
+    );
+    return true;
 }

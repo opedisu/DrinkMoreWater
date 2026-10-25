@@ -70,3 +70,41 @@ export async function notifyFollowersOfGoal(user: User, streak: number): Promise
         )
     );
 }
+
+export interface Follower {
+    id: string;
+    name: string;
+    created_at: string;
+}
+
+/** The people who can see this user's progress and send them nudges. */
+export async function loadFollowers(userId: string): Promise<Follower[]> {
+    return query<Follower>(
+        `SELECT u.id, u.name, b.created_at
+         FROM buddies b
+         JOIN users u ON u.id = b.user_id
+         WHERE b.buddy_id = $1
+         ORDER BY b.created_at DESC`,
+        [userId]
+    );
+}
+
+/**
+ * Removes a follower and blocks them, so they cannot simply re-add the code.
+ * Blocking is one-directional and silent -- the other person is not told.
+ */
+export async function removeFollower(userId: string, followerId: string): Promise<void> {
+    await query("DELETE FROM buddies WHERE user_id = $1 AND buddy_id = $2", [followerId, userId]);
+    await query(
+        "INSERT INTO buddy_blocks (user_id, blocked_id) VALUES ($1, $2) ON CONFLICT DO NOTHING",
+        [userId, followerId]
+    );
+}
+
+export async function isBlocked(ownerId: string, viewerId: string): Promise<boolean> {
+    const row = await queryOne<{ blocked_id: string }>(
+        "SELECT blocked_id FROM buddy_blocks WHERE user_id = $1 AND blocked_id = $2",
+        [ownerId, viewerId]
+    );
+    return row !== null;
+}

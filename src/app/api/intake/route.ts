@@ -3,6 +3,7 @@ import { query, queryOne } from "@/lib/db";
 import { currentUser } from "@/lib/session";
 import { localDate } from "@/lib/time";
 import { XP_PER_LOG } from "@/lib/progression";
+import { revokeGoalIfLost } from "@/lib/rewards";
 import { ALLOWED_DRINKS, MAX_SINGLE_ML, parseAmountMl, recordIntake } from "@/lib/intake";
 
 export const runtime = "nodejs";
@@ -61,6 +62,9 @@ export async function DELETE(request: Request): Promise<NextResponse> {
         "SELECT COALESCE(SUM(amount_ml), 0)::text AS total FROM intakes WHERE user_id = $1 AND local_date = $2",
         [user.id, today]
     );
+    const totalMl = Number(totals?.total ?? 0);
 
-    return NextResponse.json({ ok: true, totalMl: Number(totals?.total ?? 0) });
+    const goalLost = await revokeGoalIfLost(user, today, totalMl);
+
+    return NextResponse.json({ ok: true, totalMl, goalLost });
 }

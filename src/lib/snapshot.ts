@@ -24,6 +24,7 @@ export interface Snapshot {
         intervalMinutes: number;
         buddyCode: string;
         onboarded: boolean;
+        lastRemindAt: string | null;
     };
     today: {
         date: string;
@@ -84,7 +85,8 @@ export async function buildSnapshot(user: User): Promise<Snapshot> {
             sleepMinute: user.sleep_minute,
             intervalMinutes: user.interval_minutes,
             buddyCode: user.buddy_code,
-            onboarded: user.weight_kg !== null
+            onboarded: user.weight_kg !== null,
+            lastRemindAt: user.last_remind_at
         },
         today: {
             date: today,

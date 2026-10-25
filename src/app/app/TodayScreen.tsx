@@ -127,6 +127,11 @@ export default function TodayScreen({ initial, vapidKey }: { initial: Snapshot; 
     }
 
     const { today, rewards, user } = data;
+
+    // Reminders failing silently is the worst thing that can happen to this
+    // app, so say so on the main screen rather than letting it go unnoticed.
+    const reminderHealth =
+        push?.state === "enabled" && user.remindersOn ? staleReminderWarning(user.lastRemindAt) : null;
     const remaining = Math.max(0, today.goalMl - today.totalMl);
     const presets = PRESETS[unit];
 
@@ -161,6 +166,13 @@ export default function TodayScreen({ initial, vapidKey }: { initial: Snapshot; 
                                 </div>
                             )}
                         </div>
+                    </div>
+                )}
+
+                {reminderHealth && (
+                    <div className="banner warn" style={{ marginBottom: 14 }}>
+                        <span>🔕</span>
+                        <div>{reminderHealth}</div>
                     </div>
                 )}
 
@@ -298,4 +310,17 @@ function greeting(minuteOfDay: number): string {
     if (minuteOfDay < 12 * 60) return "Good morning,";
     if (minuteOfDay < 17 * 60) return "Good afternoon,";
     return "Good evening,";
+}
+
+/** Flags reminders that should have fired by now but have not. */
+function staleReminderWarning(lastRemindAt: string | null): string | null {
+    if (!lastRemindAt) {
+        return "Reminders are switched on, but none has been sent yet. If nothing arrives within a couple of hours, check that the scheduler is running.";
+    }
+
+    const hours = (Date.now() - new Date(lastRemindAt).getTime()) / 3_600_000;
+    if (hours < 24) return null;
+
+    const days = Math.floor(hours / 24);
+    return `No reminder has gone out for ${days === 1 ? "a day" : `${days} days`}. The scheduler may have stopped — worth checking.`;
 }

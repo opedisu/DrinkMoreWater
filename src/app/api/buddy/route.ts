@@ -1,8 +1,9 @@
 import { NextResponse } from "next/server";
 import { query, queryOne } from "@/lib/db";
 import { currentUser } from "@/lib/session";
-import { loadBuddies } from "@/lib/buddies";
+import { isBlocked, loadBuddies } from "@/lib/buddies";
 import { awardBadges } from "@/lib/rewards";
+import { rateLimit } from "@/lib/auth";
 
 export const runtime = "nodejs";
 
@@ -33,11 +34,22 @@ export async function POST(request: Request): Promise<NextResponse> {
         return NextResponse.json({ error: "That is your own code." }, { status: 400 });
     }
 
+    // Stops a stolen or guessed code being tried repeatedly.
+    if (!(await rateLimit(`buddyadd:${user.id}`, 10, 3600))) {
+        return NextResponse.json({ error: "Too many attempts. Try again in an hour." }, { status: 429 });
+    }
+
     const target = await queryOne<{ id: string; name: string }>(
         "SELECT id, name FROM users WHERE buddy_code = $1",
         [code]
     );
     if (!target) return NextResponse.json({ error: "No one found with that code." }, { status: 404 });
+
+    // Someone who removed you as a follower cannot be followed again. The
+    // message is deliberately the same as an unknown code.
+    if (await isBlocked(target.id, user.id)) {
+        return NextResponse.json({ error: "No one found with that code." }, { status: 404 });
+    }
 
     const count = await queryOne<{ count: string }>(
         "SELECT COUNT(*)::text AS count FROM buddies WHERE user_id = $1",

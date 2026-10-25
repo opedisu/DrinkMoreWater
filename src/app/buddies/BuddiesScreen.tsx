@@ -6,23 +6,62 @@ import { Toast, useToast } from "@/components/Toast";
 import { formatAmount } from "@/lib/goal";
 import type { BuddySummary } from "@/lib/types";
 
+interface Follower {
+    id: string;
+    name: string;
+    created_at: string;
+}
+
 export default function BuddiesScreen({
-    buddyCode,
-    initialBuddies
+    buddyCode: initialCode,
+    initialBuddies,
+    initialFollowers
 }: {
     buddyCode: string;
     initialBuddies: BuddySummary[];
+    initialFollowers: Follower[];
 }) {
     const { toast, show } = useToast();
+    const [buddyCode, setBuddyCode] = useState(initialCode);
     const [buddies, setBuddies] = useState<BuddySummary[]>(initialBuddies);
+    const [followers, setFollowers] = useState<Follower[]>(initialFollowers);
     const [input, setInput] = useState("");
 
     const load = useCallback(async () => {
-        const response = await fetch("/api/buddy", { cache: "no-store" });
-        if (!response.ok) return;
-        const body = (await response.json()) as { buddyCode: string; buddies: BuddySummary[] };
-        setBuddies(body.buddies);
+        const [buddyResponse, followerResponse] = await Promise.all([
+            fetch("/api/buddy", { cache: "no-store" }),
+            fetch("/api/buddy/followers", { cache: "no-store" })
+        ]);
+        if (buddyResponse.ok) {
+            const body = (await buddyResponse.json()) as { buddies: BuddySummary[] };
+            setBuddies(body.buddies);
+        }
+        if (followerResponse.ok) {
+            const body = (await followerResponse.json()) as { followers: Follower[] };
+            setFollowers(body.followers);
+        }
     }, []);
+
+    async function rotateCode() {
+        const response = await fetch("/api/buddy/code", { method: "POST" });
+        const body = await response.json();
+        if (!response.ok) {
+            show(body.error ?? "Could not change the code.", "error");
+            return;
+        }
+        setBuddyCode(body.buddyCode);
+        show("New code issued. The old one no longer works.", "success");
+    }
+
+    async function removeFollower(follower: Follower) {
+        const response = await fetch(`/api/buddy/followers?id=${follower.id}`, { method: "DELETE" });
+        if (!response.ok) {
+            show("Could not remove them.", "error");
+            return;
+        }
+        await load();
+        show(`${follower.name} can no longer see your progress.`, "success");
+    }
 
     async function addBuddy(event: React.FormEvent) {
         event.preventDefault();
@@ -78,13 +117,18 @@ export default function BuddiesScreen({
                         <div style={{ fontSize: 28, fontWeight: 750, letterSpacing: "0.12em" }}>
                             {buddyCode || "·····"}
                         </div>
-                        <button className="btn btn-sm btn-ghost" onClick={shareCode}>
-                            Share
-                        </button>
+                        <div className="row" style={{ gap: 6 }}>
+                            <button className="btn btn-sm btn-ghost" onClick={shareCode}>
+                                Share
+                            </button>
+                            <button className="btn btn-sm btn-ghost" onClick={rotateCode}>
+                                New code
+                            </button>
+                        </div>
                     </div>
                     <p className="muted" style={{ marginTop: 10 }}>
-                        Give this to someone so they can follow your progress. Ask for theirs to
-                        follow them back.
+                        Give this to someone so they can follow your progress. Issuing a new code
+                        stops anyone who still has the old one from using it.
                     </p>
                 </section>
 
@@ -147,6 +191,38 @@ export default function BuddiesScreen({
                             );
                         })
                     )}
+                </section>
+                <section className="card">
+                    <div className="card-title">Following you — {followers.length}</div>
+                    {followers.length === 0 ? (
+                        <p className="muted">
+                            Nobody is following you. Anyone you add here can see today&apos;s
+                            progress and send you a nudge.
+                        </p>
+                    ) : (
+                        followers.map((follower) => (
+                            <div className="log-item" key={follower.id}>
+                                <div className="log-main">
+                                    <span>👀</span>
+                                    <div>
+                                        <div className="log-amount">{follower.name}</div>
+                                        <div className="log-time">
+                                            since {new Date(follower.created_at).toLocaleDateString()}
+                                        </div>
+                                    </div>
+                                </div>
+                                <button
+                                    className="btn btn-sm btn-ghost btn-danger"
+                                    onClick={() => removeFollower(follower)}
+                                >
+                                    Remove
+                                </button>
+                            </div>
+                        ))
+                    )}
+                    <p className="muted" style={{ marginTop: 10 }}>
+                        Removing someone also stops them adding you again.
+                    </p>
                 </section>
             </main>
             <Toast toast={toast} />

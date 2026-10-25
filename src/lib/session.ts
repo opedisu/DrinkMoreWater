@@ -18,25 +18,31 @@ function sign(payload: string): string {
     return createHmac("sha256", secret()).update(payload).digest("base64url");
 }
 
-/** Token format: <userId>.<expiryEpochSeconds>.<hmac> */
+/** Token format: <userId>.<issuedAtEpochSeconds>.<expiryEpochSeconds>.<hmac> */
 export function createSessionToken(userId: string): string {
-    const expiry = Math.floor(Date.now() / 1000) + SESSION_DAYS * 86_400;
-    const payload = `${userId}.${expiry}`;
+    const issuedAt = Math.floor(Date.now() / 1000);
+    const expiry = issuedAt + SESSION_DAYS * 86_400;
+    const payload = `${userId}.${issuedAt}.${expiry}`;
     return `${payload}.${sign(payload)}`;
 }
 
-export function verifySessionToken(token: string): string | null {
-    const parts = token.split(".");
-    if (parts.length !== 3) return null;
+export interface SessionClaims {
+    userId: string;
+    issuedAt: number;
+}
 
-    const [userId, expiry, signature] = parts;
-    const expected = Buffer.from(sign(`${userId}.${expiry}`));
+export function verifySessionToken(token: string): SessionClaims | null {
+    const parts = token.split(".");
+    if (parts.length !== 4) return null;
+
+    const [userId, issuedAt, expiry, signature] = parts;
+    const expected = Buffer.from(sign(`${userId}.${issuedAt}.${expiry}`));
     const given = Buffer.from(signature);
     if (expected.length !== given.length || !timingSafeEqual(expected, given)) return null;
     if (Number(expiry) * 1000 < Date.now()) return null;
-    if (!/^\d+$/.test(userId)) return null;
+    if (!/^\d+$/.test(userId) || !/^\d+$/.test(issuedAt)) return null;
 
-    return userId;
+    return { userId, issuedAt: Number(issuedAt) };
 }
 
 export async function setSessionCookie(userId: string): Promise<void> {
@@ -55,7 +61,7 @@ export async function clearSessionCookie(): Promise<void> {
     store.delete(COOKIE_NAME);
 }
 
-export async function currentUserId(): Promise<string | null> {
+async function sessionClaims(): Promise<SessionClaims | null> {
     const store = await cookies();
     const token = store.get(COOKIE_NAME)?.value;
     if (!token) return null;
@@ -63,9 +69,23 @@ export async function currentUserId(): Promise<string | null> {
 }
 
 export async function currentUser(): Promise<User | null> {
-    const userId = await currentUserId();
-    if (!userId) return null;
-    return queryOne<User>("SELECT * FROM users WHERE id = $1", [userId]);
+    const claims = await sessionClaims();
+    if (!claims) return null;
+
+    const user = await queryOne<User>("SELECT * FROM users WHERE id = $1", [claims.userId]);
+    if (!user) return null;
+
+    // A token issued before the user last signed out everywhere is dead, even
+    // though its signature and expiry are still valid.
+    const validFrom = Math.floor(new Date(user.sessions_valid_from).getTime() / 1000);
+    if (claims.issuedAt < validFrom) return null;
+
+    return user;
+}
+
+/** Cheap check for pages that only need to know whether someone is signed in. */
+export async function currentUserId(): Promise<string | null> {
+    return (await currentUser())?.id ?? null;
 }
 
 export function randomCode(bytes = 4): string {

@@ -13,11 +13,11 @@ Built for one person who kept forgetting to drink water. Open to anyone who does
 | | |
 |---|---|
 | **Personal goal** | 35 ml per kg of body weight, adjusted for activity level and hot climates, or set your own target. |
-| **One-tap logging** | Preset sizes plus custom amounts, with undo. Notification action buttons log a glass without opening the app. |
+| **One-tap logging** | Preset sizes plus custom amounts, with undo. On Android the notification carries a *Log 250 ml* button; iOS ignores custom notification actions, so there a tap opens the app instead. |
 | **Real reminders** | Web Push sent by a server-side scheduler — not an in-page timer that dies when you close the tab. |
 | **Smart pacing** | Nudges only inside your waking hours, only when you are behind pace, and never once the goal is met. |
 | **Streaks & levels** | XP for every glass, streaks that only survive if yesterday's goal was met, 11 badges, and levels with titles. |
-| **Buddies** | Share a code to follow someone's progress, send them a nudge, and get told when they hit their goal. |
+| **Buddies** | Share a rotatable code to follow someone's progress, send them a nudge, and get told when they hit their goal. Remove a follower at any time and they cannot add you again. |
 
 ## Stack
 

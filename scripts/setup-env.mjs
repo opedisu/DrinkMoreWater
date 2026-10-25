@@ -9,6 +9,8 @@
  * shell history or any transcript.
  *
  *   node scripts/setup-env.mjs --local        just write .env.local
+ *   ENV_FILE=.env.production node scripts/setup-env.mjs --vercel
+ *                                             target a different env file
  *   node scripts/setup-env.mjs --railway      also push to the linked Railway service
  *   node scripts/setup-env.mjs --vercel       also push to the linked Vercel project
  *
@@ -23,7 +25,7 @@ import { createRequire } from "node:module";
 import { createInterface } from "node:readline/promises";
 
 const require = createRequire(import.meta.url);
-const ENV_FILE = ".env.local";
+const ENV_FILE = process.env.ENV_FILE ?? ".env.local";
 const args = new Set(process.argv.slice(2));
 const rotate = args.has("--rotate");
 

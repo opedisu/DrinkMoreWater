@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <!--
+    The source of truth for every app icon. The mark is the vessel, because
+    that is what the app actually shows you: a container filling up, not a
+    decorative droplet. Flat and high contrast so it survives being 48px on
+    a home screen.
+
+    The surface is curved rather than level, and the glass is wider than it
+    is tall-and-narrow, because a rounded rectangle with a flat fill line is
+    a battery icon and the eye reaches for that reading first.
+  -->
+  <defs>
+    <linearGradient id="liquid" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#4cc5f7"/>
+      <stop offset="100%" stop-color="#2591cb"/>
+    </linearGradient>
+    <clipPath id="inner">
+      <rect x="156" y="116" width="200" height="280" rx="54"/>
+    </clipPath>
+  </defs>
+
+  <rect width="512" height="512" fill="#03101c"/>
+
+  <!-- Two thirds full, which reads as progress rather than empty or done. -->
+  <g clip-path="url(#inner)">
+    <path d="M 140 222 q 29 -20 58 0 q 29 20 58 0 q 29 -20 58 0 q 29 20 58 0 L 372 412 L 140 412 Z"
+          fill="url(#liquid)"/>
+  </g>
+
+  <rect x="156" y="116" width="200" height="280" rx="54"
+        fill="none" stroke="#9fd8f5" stroke-width="15"/>
+</svg>

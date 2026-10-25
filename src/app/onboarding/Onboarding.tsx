@@ -126,7 +126,7 @@ export default function Onboarding({ initialName }: { initialName: string }) {
                     />
                 </div>
 
-                <div className="field-row">
+                <div className="field-row field-row-times">
                     <div className="field">
                         <label htmlFor="wake">Usually awake from</label>
                         <input id="wake" type="time" value={wake} onChange={(event) => setWake(event.target.value)} />

@@ -1632,11 +1632,12 @@ input[type="time"]::-webkit-date-and-time-value {
     margin: 0;
 }
 
-/* Two time fields side by side only when there is room. iOS gives a time
-   input a wide intrinsic minimum and will overlap its neighbour rather
-   than shrink, so on a phone they stack instead. */
+/* Only the time pairs stack. iOS gives a time input a wide intrinsic
+   minimum and overlaps its neighbour rather than shrink into a 1fr track.
+   Weight and Units share the same row class and were never affected, so
+   they keep sitting side by side. */
 @media (max-width: 460px) {
-    .field-row {
+    .field-row-times {
         grid-template-columns: 1fr;
         gap: 14px;
     }

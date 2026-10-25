@@ -167,7 +167,7 @@ export default function SettingsScreen({ initial, vapidKey }: { initial: Snapsho
                         </select>
                     </div>
 
-                    <div className="field-row">
+                    <div className="field-row field-row-times">
                         <div className="field">
                             <label htmlFor="wake">Awake from</label>
                             <input

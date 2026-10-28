@@ -679,6 +679,17 @@ select {
     transition: width var(--dur-slow) var(--ease);
 }
 
+/* What a discounted drink actually counted for. Sits beside the amount that
+   was logged rather than replacing it: the reader drank 250 ml, and both
+   numbers are true. */
+.log-counted {
+    margin-left: 7px;
+    font-size: 11.5px;
+    font-weight: 500;
+    color: var(--text-muted);
+    white-space: nowrap;
+}
+
 /* A buddy's last seven days, oldest on the left. One column per day, filled
    to the share of their goal they drank; a full column is a day they hit it.
    Dimmer while partial, so a week reads as hit-or-missed at a glance rather

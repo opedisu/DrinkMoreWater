@@ -4,6 +4,7 @@ import { awardBadges, countLogs, registerGoalReached } from "./rewards";
 import { levelFromXp, XP_PER_LOG } from "./progression";
 import { excessiveThresholdMl } from "./goal";
 import { notifyFollowersOfGoal } from "./buddies";
+import { HYDRATING_SUM_SQL } from "./drinks";
 import type { User } from "./types";
 
 export const MAX_SINGLE_ML = 3000;
@@ -60,11 +61,17 @@ export async function recordIntake(
 
     await query("UPDATE users SET xp = xp + $2 WHERE id = $1", [user.id, XP_PER_LOG]);
 
-    const totals = await queryOne<{ total: string }>(
-        "SELECT COALESCE(SUM(amount_ml), 0)::text AS total FROM intakes WHERE user_id = $1 AND local_date = $2",
+    // Two totals: what counts towards the goal, and what was actually drunk.
+    // The warning about overdoing it is about volume in a body, so it reads
+    // the raw figure rather than the discounted one.
+    const totals = await queryOne<{ total: string; raw: string }>(
+        `SELECT ${HYDRATING_SUM_SQL}::text AS total,
+                COALESCE(SUM(amount_ml), 0)::text AS raw
+         FROM intakes WHERE user_id = $1 AND local_date = $2`,
         [user.id, today]
     );
     const totalMl = Number(totals?.total ?? 0);
+    const rawTotalMl = Number(totals?.raw ?? 0);
 
     const earned = ["first_sip"];
     if (minuteOfDay < 8 * 60) earned.push("early_bird");
@@ -101,7 +108,7 @@ export async function recordIntake(
         goalMl: user.goal_ml,
         justHitGoal: goalReached?.firstTimeToday ?? false,
         streakRepaired: goalReached?.streakRepaired ?? false,
-        excessive: totalMl > excessiveThresholdMl(user.goal_ml),
+        excessive: rawTotalMl > excessiveThresholdMl(user.goal_ml),
         newBadges: [...newBadges, ...(goalReached?.newBadges ?? [])],
         rewards: {
             xp,

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { timingSafeEqual } from "crypto";
 import { query } from "@/lib/db";
+import { HYDRATING_SUM_SQL } from "@/lib/drinks";
 import { sendToUser } from "@/lib/push";
 import { reminderMessage } from "@/lib/messages";
 import { sendWeeklyDigests } from "@/lib/digest";
@@ -59,7 +60,7 @@ export async function GET(request: Request): Promise<NextResponse> {
                 COALESCE(i.total, 0)::text AS today_ml
          FROM users u
          LEFT JOIN LATERAL (
-             SELECT SUM(amount_ml) AS total
+             SELECT ${HYDRATING_SUM_SQL} AS total
              FROM intakes
              WHERE user_id = u.id
                AND local_date = (NOW() AT TIME ZONE u.timezone)::date

@@ -1,4 +1,5 @@
 import { query, queryOne } from "./db";
+import { HYDRATING_SUM_SQL } from "./drinks";
 import { localDate, localMinuteOfDay } from "./time";
 import { listBadges, reconcileStreak } from "./rewards";
 import { levelFromXp, levelTitle } from "./progression";
@@ -53,7 +54,7 @@ export async function buildSnapshot(user: User): Promise<Snapshot> {
 
     const [totals, logs, badges] = await Promise.all([
         queryOne<{ total: string }>(
-            "SELECT COALESCE(SUM(amount_ml), 0)::text AS total FROM intakes WHERE user_id = $1 AND local_date = $2",
+            `SELECT ${HYDRATING_SUM_SQL}::text AS total FROM intakes WHERE user_id = $1 AND local_date = $2`,
             [user.id, today]
         ),
         query<Intake>(

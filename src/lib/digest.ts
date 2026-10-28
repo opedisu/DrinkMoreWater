@@ -1,4 +1,5 @@
 import { query } from "./db";
+import { HYDRATING_SUM_SQL } from "./drinks";
 import { sendToUser } from "./push";
 import { digestMessage } from "./messages";
 import { isAwakeAt } from "./goal";
@@ -42,7 +43,7 @@ export async function sendWeeklyDigests(now: Date): Promise<{ sent: number; due:
              SELECT COUNT(*) FILTER (WHERE d.total >= u.goal_ml) AS goal_days,
                     SUM(d.total) AS total_ml
              FROM (
-                 SELECT local_date, SUM(amount_ml) AS total
+                 SELECT local_date, ${HYDRATING_SUM_SQL} AS total
                  FROM intakes
                  WHERE user_id = u.id
                    AND local_date > (NOW() AT TIME ZONE u.timezone)::date - 7

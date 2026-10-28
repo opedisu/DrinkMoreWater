@@ -1,4 +1,5 @@
 import { query, queryOne } from "./db";
+import { HYDRATING_SUM_SQL } from "./drinks";
 import { levelFromXp } from "./progression";
 import { celebrationMessage } from "./messages";
 import { sendToUser } from "./push";
@@ -30,7 +31,7 @@ export async function loadBuddies(userId: string): Promise<BuddySummary[]> {
          LEFT JOIN LATERAL (
              SELECT ARRAY(
                  SELECT COALESCE((
-                     SELECT SUM(amount_ml)
+                     SELECT ${HYDRATING_SUM_SQL}
                      FROM intakes
                      WHERE user_id = u.id
                        AND local_date = (NOW() AT TIME ZONE u.timezone)::date - offset_days

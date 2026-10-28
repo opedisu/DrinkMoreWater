@@ -23,7 +23,7 @@ import { adoptBrowserTimezone, useSnapshot } from "@/lib/useMe";
 import type { Snapshot } from "@/lib/snapshot";
 import { formatAmount, ML_PER_OZ } from "@/lib/goal";
 import { BADGE_BY_CODE } from "@/lib/progression";
-import { DRINKS, DRINK_LABELS } from "@/lib/drinks";
+import { DRINKS, DRINK_LABELS, hydratingMl, hydrationOf } from "@/lib/drinks";
 import { playDrop, playGoal, playRemove } from "@/lib/sounds";
 import { formatClock, formatMinute, parseMinute } from "@/lib/time";
 import { enablePush, pushStatus, registerServiceWorker, type PushStatus } from "@/lib/pushClient";
@@ -123,7 +123,11 @@ export default function TodayScreen({ initial, vapidKey }: { initial: Snapshot; 
                         stored === "water" || !label
                             ? formatAmount(amountMl, unit)
                             : `${formatAmount(amountMl, unit)} of ${label}`;
-                    show(atMinute === null ? `Logged ${what}` : `Logged ${what} at ${formatMinute(atMinute)}`, "success");
+                    // Say so at the moment the expectation forms, not later.
+                    const counted = hydratingMl(amountMl, stored);
+                    const against = counted === amountMl ? "" : `, ${formatAmount(counted, unit)} counted`;
+                    const when = atMinute === null ? "" : ` at ${formatMinute(atMinute)}`;
+                    show(`Logged ${what}${when}${against}`, "success");
                 }
             } finally {
                 setBusy(false);
@@ -323,7 +327,9 @@ export default function TodayScreen({ initial, vapidKey }: { initial: Snapshot; 
                                     >
                                         {DRINKS.map((option) => (
                                             <option key={option.value} value={option.value}>
-                                                {option.label}
+                                                {option.hydration < 1
+                                                    ? `${option.label} · counts ${Math.round(option.hydration * 100)}%`
+                                                    : option.label}
                                             </option>
                                         ))}
                                     </select>
@@ -395,7 +401,14 @@ export default function TodayScreen({ initial, vapidKey }: { initial: Snapshot; 
                                         <DrinkIcon drink={entry.drink} />
                                     </span>
                                     <div>
-                                        <div className="log-amount">{formatAmount(entry.amount_ml, unit)}</div>
+                                        <div className="log-amount">
+                                            {formatAmount(entry.amount_ml, unit)}
+                                            {hydrationOf(entry.drink) < 1 && (
+                                                <span className="log-counted">
+                                                    {`· ${formatAmount(hydratingMl(entry.amount_ml, entry.drink), unit)} counted`}
+                                                </span>
+                                            )}
+                                        </div>
                                         <div className="log-time">
                                             {formatClock(user.timezone, new Date(entry.created_at))}
                                             {entry.drink !== "water" &&

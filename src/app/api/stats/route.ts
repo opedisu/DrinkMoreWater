@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { query } from "@/lib/db";
+import { HYDRATING_SUM_SQL } from "@/lib/drinks";
 import { currentUser } from "@/lib/session";
 import { localDate, shiftDate } from "@/lib/time";
 import type { DayTotal } from "@/lib/types";
@@ -17,7 +18,7 @@ export async function GET(request: Request): Promise<NextResponse> {
     const from = shiftDate(today, -(days - 1));
 
     const rows = await query<{ local_date: string; total: string }>(
-        `SELECT local_date::text AS local_date, SUM(amount_ml)::text AS total
+        `SELECT local_date::text AS local_date, ${HYDRATING_SUM_SQL}::text AS total
          FROM intakes
          WHERE user_id = $1 AND local_date BETWEEN $2 AND $3
          GROUP BY local_date

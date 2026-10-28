@@ -1,4 +1,5 @@
 import { query, queryOne } from "./db";
+import { HYDRATING_SUM_SQL } from "./drinks";
 import { daysBetween } from "./time";
 import { awardableCodes, XP_PER_GOAL, XP_PER_STREAK_DAY } from "./progression";
 import { streakAfterGoal, streakSurvives } from "./streak";
@@ -146,7 +147,7 @@ export async function revokeGoalIfLost(user: User, today: string, totalMl: numbe
 
     const previous = await queryOne<{ local_date: string | null }>(
         `SELECT MAX(local_date)::text AS local_date FROM (
-             SELECT local_date, SUM(amount_ml) AS total
+             SELECT local_date, ${HYDRATING_SUM_SQL} AS total
              FROM intakes
              WHERE user_id = $1 AND local_date < $2
              GROUP BY local_date

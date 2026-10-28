@@ -5,7 +5,7 @@ import { localDate, localMinuteOfDay } from "@/lib/time";
 import { XP_PER_LOG } from "@/lib/progression";
 import { revokeGoalIfLost } from "@/lib/rewards";
 import { MAX_SINGLE_ML, parseAmountMl, recordIntake } from "@/lib/intake";
-import { ALLOWED_DRINKS } from "@/lib/drinks";
+import { ALLOWED_DRINKS, HYDRATING_SUM_SQL } from "@/lib/drinks";
 
 export const runtime = "nodejs";
 
@@ -74,7 +74,7 @@ export async function DELETE(request: Request): Promise<NextResponse> {
     await query("UPDATE users SET xp = GREATEST(0, xp - $2) WHERE id = $1", [user.id, XP_PER_LOG]);
 
     const totals = await queryOne<{ total: string }>(
-        "SELECT COALESCE(SUM(amount_ml), 0)::text AS total FROM intakes WHERE user_id = $1 AND local_date = $2",
+        `SELECT ${HYDRATING_SUM_SQL}::text AS total FROM intakes WHERE user_id = $1 AND local_date = $2`,
         [user.id, today]
     );
     const totalMl = Number(totals?.total ?? 0);

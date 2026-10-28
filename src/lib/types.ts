@@ -21,6 +21,8 @@ export interface User {
     streak_best: number;
     xp: number;
     last_goal_date: string | null;
+    streak_grace_at: string | null;
+    last_digest_on: string | null;
     last_remind_at: string | null;
     sessions_valid_from: string;
     created_at: string;
@@ -46,4 +48,6 @@ export interface BuddySummary {
     streak_current: number;
     level: number;
     unit: Unit;
+    /** Millilitres per day for the last seven days, oldest first. */
+    week: number[];
 }

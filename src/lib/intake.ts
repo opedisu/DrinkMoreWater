@@ -7,7 +7,6 @@ import { notifyFollowersOfGoal } from "./buddies";
 import type { User } from "./types";
 
 export const MAX_SINGLE_ML = 3000;
-export const ALLOWED_DRINKS = new Set(["water", "sparkling", "tea", "coffee", "juice", "other"]);
 
 export interface IntakeResult {
     ok: true;
@@ -15,6 +14,7 @@ export interface IntakeResult {
     totalMl: number;
     goalMl: number;
     justHitGoal: boolean;
+    streakRepaired: boolean;
     excessive: boolean;
     newBadges: string[];
     rewards: {
@@ -27,16 +27,33 @@ export interface IntakeResult {
     };
 }
 
-/** Records a drink and applies every reward side effect it triggers. */
-export async function recordIntake(user: User, amountMl: number, drink: string): Promise<IntakeResult> {
+/**
+ * Records a drink and applies every reward side effect it triggers.
+ *
+ * atMinute backdates the entry to a time earlier today, for the glass you
+ * drank but forgot to log. It stays on today's date, so the day's total and
+ * every streak rule are untouched; only the clock time moves.
+ */
+export async function recordIntake(
+    user: User,
+    amountMl: number,
+    drink: string,
+    atMinute: number | null = null
+): Promise<IntakeResult> {
     const today = localDate(user.timezone);
-    const minuteOfDay = localMinuteOfDay(user.timezone);
+    const nowMinute = localMinuteOfDay(user.timezone);
+
+    // Both minutes are read from the same instant in the same zone, so the
+    // difference between them is exact without any date arithmetic.
+    const minuteOfDay = atMinute ?? nowMinute;
+    const createdAt =
+        atMinute === null ? null : new Date(Date.now() - (nowMinute - atMinute) * 60_000);
 
     const inserted = await queryOne<{ id: string; created_at: string }>(
-        `INSERT INTO intakes (user_id, amount_ml, local_date, drink)
-         VALUES ($1, $2, $3, $4)
+        `INSERT INTO intakes (user_id, amount_ml, local_date, drink, created_at)
+         VALUES ($1, $2, $3, $4, COALESCE($5, NOW()))
          RETURNING id, created_at`,
-        [user.id, amountMl, today, drink]
+        [user.id, amountMl, today, drink, createdAt]
     );
 
     await query("UPDATE users SET xp = xp + $2 WHERE id = $1", [user.id, XP_PER_LOG]);
@@ -81,6 +98,7 @@ export async function recordIntake(user: User, amountMl: number, drink: string):
         totalMl,
         goalMl: user.goal_ml,
         justHitGoal: goalReached?.firstTimeToday ?? false,
+        streakRepaired: goalReached?.streakRepaired ?? false,
         excessive: totalMl > excessiveThresholdMl(user.goal_ml),
         newBadges: [...newBadges, ...(goalReached?.newBadges ?? [])],
         rewards: {

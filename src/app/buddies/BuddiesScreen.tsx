@@ -155,6 +155,7 @@ export default function BuddiesScreen({
                     ) : (
                         buddies.map((buddy) => {
                             const percent = Math.min(100, Math.round((buddy.today_ml / buddy.goal_ml) * 100));
+                            const daysHit = buddy.week.filter((dayMl) => dayMl >= buddy.goal_ml).length;
                             return (
                                 <div key={buddy.id} className="log-item" style={{ display: "block", padding: "12px 0" }}>
                                     <div className="row-between">
@@ -189,8 +190,27 @@ export default function BuddiesScreen({
                                             </button>
                                         </div>
                                     </div>
-                                    <div className="level-bar" style={{ marginTop: 9 }}>
-                                        <div className="level-fill" style={{ width: `${percent}%` }} />
+                                    <div
+                                        className="week-row"
+                                        role="img"
+                                        aria-label={`${daysHit} of the last 7 days hit, today ${percent}% of goal`}
+                                    >
+                                        {buddy.week.map((dayMl, index) => {
+                                            const fraction =
+                                                buddy.goal_ml > 0 ? Math.min(1, dayMl / buddy.goal_ml) : 0;
+                                            return (
+                                                <div
+                                                    key={index}
+                                                    className={`week-day${fraction >= 1 ? " hit" : ""}`}
+                                                >
+                                                    {dayMl > 0 && (
+                                                        <span
+                                                            style={{ height: `${Math.round(fraction * 100)}%` }}
+                                                        />
+                                                    )}
+                                                </div>
+                                            );
+                                        })}
                                     </div>
                                 </div>
                             );

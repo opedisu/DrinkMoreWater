@@ -75,7 +75,9 @@ async function logFromNotification(amountMl) {
             result.justHitGoal ? "Goal reached 🎉" : `Logged ${amountMl} ml 💧`,
             {
                 body: result.justHitGoal
-                    ? "That is your goal for today. Lovely."
+                    ? result.streakRepaired
+                        ? "That is your goal, and one missed day forgiven."
+                        : "That is your goal for today. Lovely."
                     : `${Math.max(0, result.goalMl - result.totalMl)} ml to go.`,
                 icon: "/icons/icon-192.png",
                 badge: "/icons/badge-96.png",

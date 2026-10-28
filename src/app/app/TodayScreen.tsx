@@ -23,7 +23,8 @@ import { adoptBrowserTimezone, useSnapshot } from "@/lib/useMe";
 import type { Snapshot } from "@/lib/snapshot";
 import { formatAmount, ML_PER_OZ } from "@/lib/goal";
 import { BADGE_BY_CODE } from "@/lib/progression";
-import { formatClock } from "@/lib/time";
+import { DRINKS, DRINK_LABELS } from "@/lib/drinks";
+import { formatClock, formatMinute, parseMinute } from "@/lib/time";
 import { enablePush, pushStatus, registerServiceWorker, type PushStatus } from "@/lib/pushClient";
 import type { Unit } from "@/lib/types";
 
@@ -44,6 +45,22 @@ const PRESETS: Record<Unit, { amountMl: number; display: string; Glyph: Icon }[]
     ]
 };
 
+// Only glyphs the presets already use, so the log list and the quick grid
+// speak the same visual language.
+const DRINK_GLYPH: Record<string, Icon> = {
+    water: Drop,
+    sparkling: BeerBottle,
+    tea: Coffee,
+    coffee: Coffee,
+    juice: PintGlass,
+    other: Jar
+};
+
+function DrinkIcon({ drink }: { drink: string }) {
+    const Glyph = DRINK_GLYPH[drink] ?? Drop;
+    return <Glyph size={17} weight="fill" />;
+}
+
 export default function TodayScreen({ initial, vapidKey }: { initial: Snapshot; vapidKey: string }) {
     const { data, refresh } = useSnapshot(initial);
     const { toast, show } = useToast();
@@ -52,18 +69,20 @@ export default function TodayScreen({ initial, vapidKey }: { initial: Snapshot; 
     const [push, setPush] = useState<PushStatus | null>(null);
     const [customOpen, setCustomOpen] = useState(false);
     const [customValue, setCustomValue] = useState("");
+    const [customDrink, setCustomDrink] = useState("water");
+    const [customTime, setCustomTime] = useState("");
 
     const unit: Unit = data.user.unit;
 
     const log = useCallback(
-        async (amountMl: number) => {
+        async (amountMl: number, drink = "water", atMinute: number | null = null) => {
             if (busy) return;
             setBusy(true);
             try {
                 const response = await fetch("/api/intake", {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ amountMl })
+                    body: JSON.stringify({ amountMl, drink, atMinute })
                 });
                 const body = await response.json();
 
@@ -81,14 +100,20 @@ export default function TodayScreen({ initial, vapidKey }: { initial: Snapshot; 
                 if (body.justHitGoal) {
                     setCelebration(Date.now());
                     setTimeout(() => setCelebration(0), 2600);
-                    show(`Goal reached. ${body.rewards.streakCurrent} day streak.`, "success");
+                    show(
+                        body.streakRepaired
+                            ? `Streak saved. ${body.rewards.streakCurrent} days, one missed day forgiven.`
+                            : `Goal reached. ${body.rewards.streakCurrent} day streak.`,
+                        "success"
+                    );
                 } else if (body.excessive) {
                     show("That is well past your goal. Easy does it.", "error");
                 } else if (body.newBadges?.length) {
                     const badge = BADGE_BY_CODE.get(body.newBadges[0]);
                     show(`Badge unlocked: ${badge?.name ?? "a new badge"}`, "success");
                 } else {
-                    show(`Logged ${formatAmount(amountMl, unit)}`, "success");
+                    const what = drink === "water" ? formatAmount(amountMl, unit) : `${formatAmount(amountMl, unit)} of ${DRINK_LABELS.get(drink)?.toLowerCase()}`;
+                    show(atMinute === null ? `Logged ${what}` : `Logged ${what} at ${formatMinute(atMinute)}`, "success");
                 }
             } finally {
                 setBusy(false);
@@ -249,35 +274,78 @@ export default function TodayScreen({ initial, vapidKey }: { initial: Snapshot; 
 
                     {customOpen ? (
                         <form
-                            className="row"
-                            style={{ marginTop: 12 }}
+                            className="stack"
+                            style={{ marginTop: 14 }}
                             onSubmit={(event) => {
                                 event.preventDefault();
                                 const entered = Number(customValue);
                                 if (!Number.isFinite(entered) || entered <= 0) return;
                                 const ml = unit === "oz" ? Math.round(entered * ML_PER_OZ) : Math.round(entered);
-                                void log(ml);
+                                const minute = customTime ? parseMinute(customTime, -1) : -1;
+                                void log(ml, customDrink, minute < 0 ? null : minute);
                                 setCustomValue("");
+                                setCustomTime("");
+                                setCustomDrink("water");
                                 setCustomOpen(false);
                             }}
                         >
-                            <input
-                                type="number"
-                                min={1}
-                                max={unit === "oz" ? 100 : 3000}
-                                autoFocus
-                                placeholder={`Amount in ${unit}`}
-                                value={customValue}
-                                onChange={(event) => setCustomValue(event.target.value)}
-                            />
-                            <button className="btn btn-primary btn-sm" type="submit">
-                                Add
-                            </button>
+                            <div className="field">
+                                <label htmlFor="custom-amount">Amount in {unit}</label>
+                                <input
+                                    id="custom-amount"
+                                    type="number"
+                                    min={1}
+                                    max={unit === "oz" ? 100 : 3000}
+                                    autoFocus
+                                    value={customValue}
+                                    onChange={(event) => setCustomValue(event.target.value)}
+                                />
+                            </div>
+
+                            <div className="field-row field-row-times">
+                                <div className="field">
+                                    <label htmlFor="custom-drink">Drink</label>
+                                    <select
+                                        id="custom-drink"
+                                        value={customDrink}
+                                        onChange={(event) => setCustomDrink(event.target.value)}
+                                    >
+                                        {DRINKS.map((option) => (
+                                            <option key={option.value} value={option.value}>
+                                                {option.label}
+                                            </option>
+                                        ))}
+                                    </select>
+                                </div>
+                                <div className="field">
+                                    <label htmlFor="custom-time">Time (now if blank)</label>
+                                    <input
+                                        id="custom-time"
+                                        type="time"
+                                        max={formatMinute(today.minuteOfDay)}
+                                        value={customTime}
+                                        onChange={(event) => setCustomTime(event.target.value)}
+                                    />
+                                </div>
+                            </div>
+
+                            <div className="row">
+                                <button className="btn btn-primary btn-sm" type="submit" disabled={busy}>
+                                    Add
+                                </button>
+                                <button
+                                    className="btn btn-ghost btn-sm"
+                                    type="button"
+                                    onClick={() => setCustomOpen(false)}
+                                >
+                                    Cancel
+                                </button>
+                            </div>
                         </form>
                     ) : (
                         <div className="row" style={{ marginTop: 12 }}>
                             <button className="btn btn-ghost btn-sm" onClick={() => setCustomOpen(true)}>
-                                Custom amount
+                                Add in detail
                             </button>
                             {today.logs.length > 0 && (
                                 <button className="btn btn-ghost btn-sm" onClick={undo}>
@@ -313,12 +381,14 @@ export default function TodayScreen({ initial, vapidKey }: { initial: Snapshot; 
                             <div className="log-item" key={entry.id}>
                                 <div className="log-main">
                                     <span className="log-icon">
-                                        <Drop size={17} weight="fill" />
+                                        <DrinkIcon drink={entry.drink} />
                                     </span>
                                     <div>
                                         <div className="log-amount">{formatAmount(entry.amount_ml, unit)}</div>
                                         <div className="log-time">
                                             {formatClock(user.timezone, new Date(entry.created_at))}
+                                            {entry.drink !== "water" &&
+                                                ` · ${DRINK_LABELS.get(entry.drink) ?? entry.drink}`}
                                         </div>
                                     </div>
                                 </div>

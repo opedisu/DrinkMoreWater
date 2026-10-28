@@ -1,5 +1,4 @@
 import { query, queryOne } from "./db";
-import { localDate } from "./time";
 import { levelFromXp } from "./progression";
 import { celebrationMessage } from "./messages";
 import { sendToUser } from "./push";
@@ -12,37 +11,51 @@ interface BuddyRow {
     streak_current: number;
     xp: number;
     unit: Unit;
-    timezone: string;
+    week: number[] | null;
 }
 
-/** Today's progress for everyone this user follows, in each buddy's own day. */
+/**
+ * The last seven days for everyone this user follows, each counted in that
+ * buddy's own timezone. The series is oldest first, so the final entry is
+ * their today.
+ *
+ * One query, whatever the number of buddies: the week is built inside the
+ * statement rather than by asking per person.
+ */
 export async function loadBuddies(userId: string): Promise<BuddySummary[]> {
     const rows = await query<BuddyRow>(
-        `SELECT u.id, u.name, u.goal_ml, u.streak_current, u.xp, u.unit, u.timezone
+        `SELECT u.id, u.name, u.goal_ml, u.streak_current, u.xp, u.unit, w.week
          FROM buddies b
          JOIN users u ON u.id = b.buddy_id
+         LEFT JOIN LATERAL (
+             SELECT ARRAY(
+                 SELECT COALESCE((
+                     SELECT SUM(amount_ml)
+                     FROM intakes
+                     WHERE user_id = u.id
+                       AND local_date = (NOW() AT TIME ZONE u.timezone)::date - offset_days
+                 ), 0)::int
+                 FROM generate_series(6, 0, -1) AS offset_days
+             ) AS week
+         ) w ON TRUE
          WHERE b.user_id = $1
          ORDER BY u.name`,
         [userId]
     );
 
-    return Promise.all(
-        rows.map(async (row) => {
-            const totals = await queryOne<{ total: string }>(
-                "SELECT COALESCE(SUM(amount_ml), 0)::text AS total FROM intakes WHERE user_id = $1 AND local_date = $2",
-                [row.id, localDate(row.timezone)]
-            );
-            return {
-                id: row.id,
-                name: row.name,
-                today_ml: Number(totals?.total ?? 0),
-                goal_ml: row.goal_ml,
-                streak_current: row.streak_current,
-                level: levelFromXp(row.xp).level,
-                unit: row.unit
-            };
-        })
-    );
+    return rows.map((row) => {
+        const week = row.week ?? [];
+        return {
+            id: row.id,
+            name: row.name,
+            today_ml: week[week.length - 1] ?? 0,
+            goal_ml: row.goal_ml,
+            streak_current: row.streak_current,
+            level: levelFromXp(row.xp).level,
+            unit: row.unit,
+            week
+        };
+    });
 }
 
 /**

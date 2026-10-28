@@ -1,10 +1,11 @@
 import { NextResponse } from "next/server";
 import { query, queryOne } from "@/lib/db";
 import { currentUser } from "@/lib/session";
-import { localDate } from "@/lib/time";
+import { localDate, localMinuteOfDay } from "@/lib/time";
 import { XP_PER_LOG } from "@/lib/progression";
 import { revokeGoalIfLost } from "@/lib/rewards";
-import { ALLOWED_DRINKS, MAX_SINGLE_ML, parseAmountMl, recordIntake } from "@/lib/intake";
+import { MAX_SINGLE_ML, parseAmountMl, recordIntake } from "@/lib/intake";
+import { ALLOWED_DRINKS } from "@/lib/drinks";
 
 export const runtime = "nodejs";
 
@@ -12,7 +13,7 @@ export async function POST(request: Request): Promise<NextResponse> {
     const user = await currentUser();
     if (!user) return NextResponse.json({ error: "Not signed in." }, { status: 401 });
 
-    let payload: { amountMl?: number; drink?: string };
+    let payload: { amountMl?: number; drink?: string; atMinute?: number | null };
     try {
         payload = await request.json();
     } catch {
@@ -24,8 +25,22 @@ export async function POST(request: Request): Promise<NextResponse> {
         return NextResponse.json({ error: `Amount must be between 1 and ${MAX_SINGLE_ML} ml.` }, { status: 400 });
     }
 
+    // A backdated entry may only be moved to an earlier point of today. Later
+    // today has not happened, and an earlier day would rewrite a settled
+    // total that streaks and badges have already been decided on.
+    let atMinute: number | null = null;
+    if (payload.atMinute !== undefined && payload.atMinute !== null) {
+        atMinute = Math.round(Number(payload.atMinute));
+        if (!Number.isInteger(atMinute) || atMinute < 0 || atMinute > 1439) {
+            return NextResponse.json({ error: "That is not a time of day." }, { status: 400 });
+        }
+        if (atMinute > localMinuteOfDay(user.timezone)) {
+            return NextResponse.json({ error: "That time has not come round yet today." }, { status: 400 });
+        }
+    }
+
     const drink = ALLOWED_DRINKS.has(payload.drink ?? "") ? (payload.drink as string) : "water";
-    return NextResponse.json(await recordIntake(user, amountMl, drink));
+    return NextResponse.json(await recordIntake(user, amountMl, drink, atMinute));
 }
 
 /** Undo: removes a specific log, or the most recent one for today. */

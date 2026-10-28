@@ -1,6 +1,7 @@
 import { query, queryOne } from "./db";
 import { daysBetween } from "./time";
 import { awardableCodes, XP_PER_GOAL, XP_PER_STREAK_DAY } from "./progression";
+import { streakAfterGoal, streakSurvives } from "./streak";
 import type { User } from "./types";
 
 export { XP_PER_LOG, levelFromXp, levelTitle } from "./progression";
@@ -32,6 +33,13 @@ export interface GoalReachedResult {
     bestStreak: number;
     xpGained: number;
     newBadges: string[];
+    /** A missed day was forgiven to keep this streak alive. */
+    streakRepaired: boolean;
+}
+
+/** Days since the last repair, or null if this user has never had one. */
+function graceAge(user: User, today: string): number | null {
+    return user.streak_grace_at === null ? null : daysBetween(user.streak_grace_at, today);
 }
 
 /**
@@ -49,24 +57,34 @@ export async function registerGoalReached(
             streak: user.streak_current,
             bestStreak: user.streak_best,
             xpGained: 0,
-            newBadges: []
+            newBadges: [],
+            streakRepaired: false
         };
     }
 
-    const continuesStreak = user.last_goal_date !== null && daysBetween(user.last_goal_date, today) === 1;
-    const streak = continuesStreak ? user.streak_current + 1 : 1;
+    const { streak, repaired } =
+        user.last_goal_date === null
+            ? { streak: 1, repaired: false }
+            : streakAfterGoal(
+                  user.streak_current,
+                  daysBetween(user.last_goal_date, today),
+                  graceAge(user, today)
+              );
+
     const bestStreak = Math.max(streak, user.streak_best);
     const xpGained = XP_PER_GOAL + Math.min(streak, 10) * XP_PER_STREAK_DAY;
 
     // The WHERE clause is the real guard: if two logs cross the goal at the
     // same moment, only one of them updates, so XP is never granted twice and
-    // buddies are only told once.
+    // buddies are only told once. COALESCE leaves the repair date alone unless
+    // this goal actually spent one.
     const claimed = await queryOne<{ id: string }>(
         `UPDATE users
-         SET last_goal_date = $2, streak_current = $3, streak_best = $4, xp = xp + $5
+         SET last_goal_date = $2, streak_current = $3, streak_best = $4, xp = xp + $5,
+             streak_grace_at = COALESCE($6, streak_grace_at)
          WHERE id = $1 AND last_goal_date IS DISTINCT FROM $2
          RETURNING id`,
-        [user.id, today, streak, bestStreak, xpGained]
+        [user.id, today, streak, bestStreak, xpGained, repaired ? today : null]
     );
 
     if (!claimed) {
@@ -75,7 +93,8 @@ export async function registerGoalReached(
             streak,
             bestStreak,
             xpGained: 0,
-            newBadges: []
+            newBadges: [],
+            streakRepaired: false
         };
     }
 
@@ -87,18 +106,22 @@ export async function registerGoalReached(
     if (minuteOfDay < 18 * 60) earned.push("night_finisher");
 
     const newBadges = await awardBadges(user.id, earned);
-    return { firstTimeToday: true, streak, bestStreak, xpGained, newBadges };
+    return { firstTimeToday: true, streak, bestStreak, xpGained, newBadges, streakRepaired: repaired };
 }
 
 /**
- * A streak only survives if yesterday's goal was met. Checked on read so the
- * number shown is always honest, without needing a nightly job.
+ * A streak only survives if yesterday's goal was met, or if one missed day
+ * can still be forgiven. Checked on read so the number shown is always
+ * honest, without needing a nightly job.
+ *
+ * The repair is not spent here. Today may still end without a goal, and then
+ * tomorrow's gap is past saving anyway.
  */
 export async function reconcileStreak(user: User, today: string): Promise<number> {
     if (user.streak_current === 0 || !user.last_goal_date) return 0;
 
     const gap = daysBetween(user.last_goal_date, today);
-    if (gap <= 1) return user.streak_current;
+    if (streakSurvives(gap, graceAge(user, today))) return user.streak_current;
 
     await query("UPDATE users SET streak_current = 0 WHERE id = $1", [user.id]);
     return 0;
@@ -133,16 +156,22 @@ export async function revokeGoalIfLost(user: User, today: string, totalMl: numbe
     );
 
     const previousGoalDate = previous?.local_date ?? null;
-    const continuesFromYesterday =
-        previousGoalDate !== null && daysBetween(previousGoalDate, today) === 1;
-    const streak = continuesFromYesterday ? Math.max(0, user.streak_current - 1) : 0;
+    const gap = previousGoalDate === null ? null : daysBetween(previousGoalDate, today);
+
+    // If today's goal spent a repair, hand it back. The run then rests on a
+    // two-day gap again, which the returned repair still covers, so the streak
+    // steps back to what it was rather than collapsing.
+    const releasedRepair = user.streak_grace_at === today;
+    const standsUp = gap === 1 || (gap === 2 && releasedRepair);
+    const streak = standsUp ? Math.max(0, user.streak_current - 1) : 0;
     const refund = XP_PER_GOAL + Math.min(user.streak_current, 10) * XP_PER_STREAK_DAY;
 
     await query(
         `UPDATE users
-         SET last_goal_date = $2, streak_current = $3, xp = GREATEST(0, xp - $4)
+         SET last_goal_date = $2, streak_current = $3, xp = GREATEST(0, xp - $4),
+             streak_grace_at = CASE WHEN $6 THEN NULL ELSE streak_grace_at END
          WHERE id = $1 AND last_goal_date = $5`,
-        [user.id, previousGoalDate, streak, refund, today]
+        [user.id, previousGoalDate, streak, refund, today, releasedRepair]
     );
     return true;
 }

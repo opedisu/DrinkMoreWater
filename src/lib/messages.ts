@@ -58,6 +58,31 @@ export function reminderMessage(options: {
     };
 }
 
+/**
+ * The Sunday digest. Once a week, so it can afford to be a little warmer
+ * than a nudge, but the count still does the talking. Seven days of data is
+ * the one thing a reminder can never tell you.
+ */
+export function digestMessage(options: {
+    goalDays: number;
+    totalMl: number;
+    streak: number;
+    unit: Unit;
+}): { title: string; body: string } {
+    const { goalDays, totalMl, streak, unit } = options;
+    const total = unit === "oz" ? formatAmount(totalMl, unit) : `${(totalMl / 1000).toFixed(1)} L`;
+
+    if (goalDays === 7) {
+        return { title: "Seven for seven", body: `A clean week, ${total} in all.` };
+    }
+    if (goalDays === 0) {
+        return { title: "Your week", body: "No days hit. Tomorrow is a fresh one." };
+    }
+
+    const run = streak > 1 ? ` On a ${streak} day run.` : "";
+    return { title: "Your week", body: `${goalDays} of 7 days hit, ${total} in all.${run}` };
+}
+
 export function celebrationMessage(streak: number): { title: string; body: string } {
     if (streak >= 30) {
         return { title: "That's the goal", body: `${streak} days straight. It's a habit now, not a plan.` };

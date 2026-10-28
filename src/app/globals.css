@@ -679,6 +679,39 @@ select {
     transition: width var(--dur-slow) var(--ease);
 }
 
+/* A buddy's last seven days, oldest on the left. One column per day, filled
+   to the share of their goal they drank; a full column is a day they hit it.
+   Dimmer while partial, so a week reads as hit-or-missed at a glance rather
+   than as seven numbers to compare. */
+.week-row {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    align-items: end;
+    gap: 4px;
+    margin-top: 10px;
+}
+
+.week-day {
+    position: relative;
+    height: 24px;
+    border-radius: 3px;
+    background: rgba(255, 255, 255, 0.07);
+    overflow: hidden;
+}
+
+.week-day > span {
+    position: absolute;
+    inset: auto 0 0 0;
+    min-height: 2px;
+    background: var(--accent);
+    opacity: 0.4;
+    transition: height var(--dur-slow) var(--ease);
+}
+
+.week-day.hit > span {
+    opacity: 1;
+}
+
 /* ---------- nav ---------- */
 
 /* Floating rather than edge-to-edge: it reads as a control, and it keeps

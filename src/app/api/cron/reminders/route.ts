@@ -3,6 +3,7 @@ import { timingSafeEqual } from "crypto";
 import { query } from "@/lib/db";
 import { sendToUser } from "@/lib/push";
 import { reminderMessage } from "@/lib/messages";
+import { sendWeeklyDigests } from "@/lib/digest";
 import { isAwakeAt, pacedTargetMl } from "@/lib/goal";
 import { localMinuteOfDay } from "@/lib/time";
 import type { Unit } from "@/lib/types";
@@ -161,6 +162,13 @@ export async function GET(request: Request): Promise<NextResponse> {
         );
     }
 
+    // The Sunday digest rides on the same sweep. A failure here must not cost
+    // us the sweep record below, which is what proves the scheduler is alive.
+    const digest = await sendWeeklyDigests(now).catch((error) => {
+        console.error("weekly digest failed:", error);
+        return { sent: 0, due: 0 };
+    });
+
     // Recorded so /api/health can tell an uptime monitor the scheduler is
     // still alive. This is what turns a silent failure into an alert.
     await query(
@@ -176,7 +184,8 @@ export async function GET(request: Request): Promise<NextResponse> {
         considered: candidates.length,
         sent,
         skipped,
-        reminded
+        reminded,
+        digestsSent: digest.sent
     });
 }
 

@@ -106,3 +106,11 @@ CREATE TABLE IF NOT EXISTS system_state (
     value       TEXT NOT NULL,
     updated_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+
+-- A streak survives one missed day per week. This records when that repair
+-- was last spent; NULL means never.
+ALTER TABLE users ADD COLUMN IF NOT EXISTS streak_grace_at DATE;
+
+-- The local date the weekly digest was last sent, so a sweep that runs every
+-- fifteen minutes still only sends one per week.
+ALTER TABLE users ADD COLUMN IF NOT EXISTS last_digest_on DATE;

@@ -8,6 +8,7 @@
         "build": "next build",
         "start": "next start",
         "lint": "eslint .",
+        "check": "node --no-warnings=MODULE_TYPELESS_PACKAGE_JSON scripts/check-streak.mjs",
         "db:migrate": "node scripts/migrate.mjs",
         "vapid": "node scripts/generate-vapid.mjs",
         "setup": "node scripts/setup-env.mjs"

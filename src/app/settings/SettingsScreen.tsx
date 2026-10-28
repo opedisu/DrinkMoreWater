@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useSyncExternalStore } from "react";
 import { Warning } from "@phosphor-icons/react";
 import InstallGuide from "@/components/InstallGuide";
 import { useRouter } from "next/navigation";
@@ -11,6 +11,7 @@ import type { Snapshot } from "@/lib/snapshot";
 import { formatAmount, recommendedGoalMl } from "@/lib/goal";
 import { formatMinute, parseMinute } from "@/lib/time";
 import { disablePush, enablePush, pushStatus, type PushStatus } from "@/lib/pushClient";
+import { setSoundEnabled, soundEnabled, soundEnabledOnServer, subscribeSound } from "@/lib/sounds";
 import type { ActivityLevel, Unit } from "@/lib/types";
 
 const INTERVALS = [30, 45, 60, 90, 120, 180];
@@ -28,6 +29,10 @@ export default function SettingsScreen({ initial, vapidKey }: { initial: Snapsho
     const [form, setForm] = useState(() => formFrom(initial));
     const [saving, setSaving] = useState(false);
     const [push, setPush] = useState<PushStatus | null>(null);
+
+    // Lives in this device's storage, not the account, so it is read through
+    // a store rather than the snapshot.
+    const sound = useSyncExternalStore(subscribeSound, soundEnabled, soundEnabledOnServer);
     const [confirmingDelete, setConfirmingDelete] = useState(false);
     const [deleteConfirm, setDeleteConfirm] = useState("");
 
@@ -137,6 +142,21 @@ export default function SettingsScreen({ initial, vapidKey }: { initial: Snapsho
                             aria-pressed={push?.state === "enabled"}
                             aria-label="Push reminders"
                             onClick={toggleReminders}
+                        />
+                    </div>
+
+                    <div className="setting-row">
+                        <div>
+                            <div className="setting-label">Sound on this device</div>
+                            <div className="muted">
+                                {sound ? "A drip when you log, a flourish at your goal." : "Silent."}
+                            </div>
+                        </div>
+                        <button
+                            className={`toggle${sound ? " on" : ""}`}
+                            aria-pressed={sound}
+                            aria-label="Sound effects"
+                            onClick={() => setSoundEnabled(!sound)}
                         />
                     </div>
 

@@ -24,6 +24,7 @@ import type { Snapshot } from "@/lib/snapshot";
 import { formatAmount, ML_PER_OZ } from "@/lib/goal";
 import { BADGE_BY_CODE } from "@/lib/progression";
 import { DRINKS, DRINK_LABELS } from "@/lib/drinks";
+import { playDrop, playGoal, playRemove } from "@/lib/sounds";
 import { formatClock, formatMinute, parseMinute } from "@/lib/time";
 import { enablePush, pushStatus, registerServiceWorker, type PushStatus } from "@/lib/pushClient";
 import type { Unit } from "@/lib/types";
@@ -96,6 +97,8 @@ export default function TodayScreen({ initial, vapidKey }: { initial: Snapshot; 
                 // A short tap is most of what makes a web app feel native on a
                 // phone. Unsupported on iOS Safari, where it is simply absent.
                 navigator.vibrate?.(body.justHitGoal ? [18, 60, 18, 60, 36] : 12);
+                if (body.justHitGoal) playGoal();
+                else playDrop();
 
                 if (body.justHitGoal) {
                     setCelebration(Date.now());
@@ -129,6 +132,7 @@ export default function TodayScreen({ initial, vapidKey }: { initial: Snapshot; 
             return;
         }
         await refresh();
+        playRemove();
         show("Removed the last entry.");
     }, [refresh, show]);
 
@@ -397,6 +401,7 @@ export default function TodayScreen({ initial, vapidKey }: { initial: Snapshot; 
                                     onClick={async () => {
                                         await fetch(`/api/intake?id=${entry.id}`, { method: "DELETE" });
                                         await refresh();
+                                        playRemove();
                                     }}
                                     aria-label={`Remove ${formatAmount(entry.amount_ml, unit)} entry`}
                                 >

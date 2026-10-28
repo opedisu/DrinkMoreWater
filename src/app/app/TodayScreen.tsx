@@ -115,7 +115,14 @@ export default function TodayScreen({ initial, vapidKey }: { initial: Snapshot; 
                     const badge = BADGE_BY_CODE.get(body.newBadges[0]);
                     show(`Badge unlocked: ${badge?.name ?? "a new badge"}`, "success");
                 } else {
-                    const what = drink === "water" ? formatAmount(amountMl, unit) : `${formatAmount(amountMl, unit)} of ${DRINK_LABELS.get(drink)?.toLowerCase()}`;
+                    // What the server stored, not what was asked for: it falls
+                    // back to water for anything it does not recognise.
+                    const stored = body.intake?.drink ?? drink;
+                    const label = DRINK_LABELS.get(stored)?.toLowerCase();
+                    const what =
+                        stored === "water" || !label
+                            ? formatAmount(amountMl, unit)
+                            : `${formatAmount(amountMl, unit)} of ${label}`;
                     show(atMinute === null ? `Logged ${what}` : `Logged ${what} at ${formatMinute(atMinute)}`, "success");
                 }
             } finally {

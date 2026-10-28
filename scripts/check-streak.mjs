@@ -24,6 +24,9 @@ assert.deepEqual(streakAfterGoal(5, 9, 99), { streak: 1, repaired: false });
 assert.deepEqual(streakAfterGoal(0, 1, null), { streak: 1, repaired: false });
 assert.deepEqual(streakAfterGoal(5, 0, null), { streak: 1, repaired: false });
 
+// A streak already lost does not spend the repair to reach the same 1.
+assert.deepEqual(streakAfterGoal(0, 2, null), { streak: 1, repaired: false });
+
 // Survival on read matches: alive through a repairable gap, dead past it.
 assert.equal(streakSurvives(1, null), true);
 assert.equal(streakSurvives(2, null), true);

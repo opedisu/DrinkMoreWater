@@ -42,7 +42,11 @@ export function streakAfterGoal(
     graceAgeDays: number | null
 ): StreakOutcome {
     if (gapDays === 1) return { streak: streakCurrent + 1, repaired: false };
-    if (gapDays === 2 && graceAvailable(graceAgeDays)) {
+
+    // Forgiving a missed day only means something when there is a run to
+    // carry over. Without this, a streak already lost spends the week's
+    // repair to reach the 1 it would have reached anyway.
+    if (gapDays === 2 && streakCurrent >= 1 && graceAvailable(graceAgeDays)) {
         return { streak: streakCurrent + 1, repaired: true };
     }
     return { streak: 1, repaired: false };

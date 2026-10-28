@@ -45,6 +45,8 @@ export async function recordIntake(
 
     // Both minutes are read from the same instant in the same zone, so the
     // difference between them is exact without any date arithmetic.
+    // shortcut: an hour out if the clocks changed earlier the same day, twice
+    // a year; upgrade to a real zoned construction if that ever matters.
     const minuteOfDay = atMinute ?? nowMinute;
     const createdAt =
         atMinute === null ? null : new Date(Date.now() - (nowMinute - atMinute) * 60_000);

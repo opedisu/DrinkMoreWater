@@ -65,9 +65,15 @@ export async function sendWeeklyDigests(now: Date): Promise<{ sent: number; due:
     for (const user of candidates) {
         const minuteOfDay = localMinuteOfDay(user.timezone, now);
 
-        // Someone who sleeps before seven gets theirs earlier rather than
-        // never, but nobody is woken for it.
-        const sendAt = Math.min(DIGEST_MINUTE, user.sleep_minute - 60);
+        // Someone who is in bed before seven gets theirs earlier rather than
+        // never. Only for a window that ends the same day: when it wraps past
+        // midnight, sleep_minute is a small hour of the morning, and taking an
+        // hour off it would send the digest at breakfast.
+        const wrapsPastMidnight = user.sleep_minute <= user.wake_minute;
+        const sendAt = wrapsPastMidnight
+            ? DIGEST_MINUTE
+            : Math.min(DIGEST_MINUTE, user.sleep_minute - 60);
+
         if (minuteOfDay < sendAt) continue;
         if (!isAwakeAt(minuteOfDay, user.wake_minute, user.sleep_minute)) continue;
 

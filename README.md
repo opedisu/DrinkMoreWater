@@ -59,6 +59,12 @@ the scheduler is native, and Postgres stays on the private network.
    keeps them out of your shell history and out of the process list; only the last
    variable triggers a redeploy.
 4. **Run the migration:** `npm run db:migrate` (with `DATABASE_URL` set).
+
+   Then set the app service's **pre-deploy command** to `npm run db:migrate` (Railway →
+   the app service → Settings → Deploy). Every later deploy migrates before the new
+   container takes traffic, so a schema change can never arrive after the code that
+   needs it. `db/schema.sql` is written to be re-run safely, so this is idempotent — and
+   without it, a release that adds a column fails at runtime rather than at deploy time.
 5. **Add the scheduler.** New service in the same project → set it to run on a cron
    schedule of `*/15 * * * *` with:
 
